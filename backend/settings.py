@@ -54,15 +54,28 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-CORS_ALLOW_ALL_ORIGINS = True  # For development only
+CORS_ALLOW_ALL_ORIGINS = [
+    'https://h2stechsolutions.netlify.app'
+]
+
+
+CORS_ALLOW_CREDENTIALS = True
+
+
+  # For development only
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    )
 }
+CSRF_TRUSTED_ORIGINS = [
+    'https://h2stechsolutions.netlify.app',
+]
+ALLOWED_HOSTS = [
+    'h2s-backend-urrt.onrender.com',
+    'localhost',
+    '127.0.0.1',
+]
 AUTH_USER_MODEL = 'authapp.CustomUser'
 
 ROOT_URLCONF = 'backend.urls'
