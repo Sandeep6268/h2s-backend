@@ -55,7 +55,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 CORS_ALLOWED_ORIGINS = [
-    'https://h2stechsolutions.netlify.app'
+    "https://h2stechsolutions.netlify.app",
+    "https://h2s-backend-urrt.onrender.com",
 ]
 
 
@@ -70,8 +71,12 @@ REST_FRAMEWORK = {
 }
 CSRF_TRUSTED_ORIGINS = [
     'https://h2stechsolutions.netlify.app',
+    'https://h2stechsolutions.netlify.app/',
+    'https://h2s-backend-urrt.onrender.com',
+    'https://h2s-backend-urrt.onrender.com/'
 ]
 ALLOWED_HOSTS = [
+    'h2stechsolutions.netlify.app',
     'h2s-backend-urrt.onrender.com',
     'localhost',
     '127.0.0.1',
