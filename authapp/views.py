@@ -8,21 +8,34 @@ from .serializers import CustomUserSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
 from .models import CertificateRequest
+from rest_framework import status
 
 
-class CertificateRequestView(APIView):
+class SubmitCertificateRequest(APIView):
     def post(self, request):
         data = request.data
+        required_fields = ["name", "mobile", "email", "course"]
+
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return Response(
+                    {"error": f"Missing field: {field}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         try:
             CertificateRequest.objects.create(
-                name=data.get("name"),
-                mobile=data.get("mobile"),
-                email=data.get("email"),
-                course=data.get("course")
+                name=data["name"],
+                mobile=data["mobile"],
+                email=data["email"],
+                course=data["course"]
             )
-            return Response({"message": "Certificate request submitted successfully!"}, status=status.HTTP_201_CREATED)
+            return Response(
+                {"message": "Certificate request submitted successfully!"},
+                status=status.HTTP_201_CREATED
+            )
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class GetUserById(APIView):
     permission_classes = [IsAuthenticated]
