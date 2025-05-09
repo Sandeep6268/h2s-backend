@@ -59,6 +59,14 @@ CORS_ALLOWED_ORIGINS = [
     "https://h2s-backend-urrt.onrender.com",
 ]
 
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 365  # 1 saal ka session (seconds mein)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Jab browser band ho to session expire na ho
+# settings.py mein
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_AGE = None  # Indefinite duration
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 365 * 10  # 10 saal ke liye set kar sakte hain
+# settings.py mein
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Jab browser band ho to session expire ho
 
 CORS_ALLOW_CREDENTIALS = True
 
