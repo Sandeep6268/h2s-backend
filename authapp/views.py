@@ -13,29 +13,15 @@ from rest_framework import status
 
 class SubmitCertificateRequest(APIView):
     def post(self, request):
-        data = request.data
-        required_fields = ["name", "mobile", "email", "course"]
-
-        for field in required_fields:
-            if field not in data or not data[field]:
-                return Response(
-                    {"error": f"Missing field: {field}"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-        try:
-            CertificateRequest.objects.create(
-                name=data["name"],
-                mobile=data["mobile"],
-                email=data["email"],
-                course=data["course"]
-            )
+        serializer = CertificateRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
             return Response(
                 {"message": "Certificate request submitted successfully!"},
                 status=status.HTTP_201_CREATED
             )
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class GetUserById(APIView):
     permission_classes = [IsAuthenticated]
