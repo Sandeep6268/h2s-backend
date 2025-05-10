@@ -1,25 +1,17 @@
+# authapp/serializers.py
+
 from rest_framework import serializers
-from .models import CustomUser, UserCourse, Course,CertificateRequest
+from .models import CustomUser  # Adjust if your import path is different
 
-class UserCourseSerializer(serializers.ModelSerializer):
-    course_name = serializers.CharField(source='course.name')
-    course_id = serializers.CharField(source='course.course_id')
-    
-    class Meta:
-        model = UserCourse
-        fields = ['id', 'course_name', 'course_id', 'purchase_date', 'payment_id']
-
-class CourseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Course
-        fields = '__all__'
-
-class CustomUserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CustomUser
-        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+from rest_framework import serializers
+from .models import CertificateRequest
 
 class CertificateRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = CertificateRequest
         fields = '__all__'
+
+class CustomUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email']  # Add any other fields you need
