@@ -18,7 +18,8 @@ class SubmitCertificateRequest(APIView):
     def post(self, request):
         serializer = CertificateRequestSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            cert = serializer.save()
+            print("Certificate saved:", cert)
             return Response({'message': 'Certificate request submitted!'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
