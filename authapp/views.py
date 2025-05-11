@@ -14,6 +14,7 @@ from rest_framework import status
 from .models import CertificateRequest
 from .serializers import CertificateRequestSerializer
 
+
 class SubmitCertificateRequest(APIView):
     def post(self, request):
         serializer = CertificateRequestSerializer(data=request.data)
