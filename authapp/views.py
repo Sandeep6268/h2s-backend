@@ -15,6 +15,24 @@ from .models import CertificateRequest
 from .serializers import CertificateRequestSerializer
 
 
+
+# authapp/views.py
+from rest_framework.decorators import api_view, permission_classes
+from .models import UserCourse
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def save_course(request):
+    course_id = request.data.get('course_id')
+    UserCourse.objects.create(user=request.user, course_id=course_id)
+    return Response({'status': 'success'}, status=201)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_courses(request):
+    courses = UserCourse.objects.filter(user=request.user).values_list('course_id', flat=True)
+    return Response(list(courses))
+
+
 class SubmitCertificateRequest(APIView):
     def post(self, request):
         serializer = CertificateRequestSerializer(data=request.data)
