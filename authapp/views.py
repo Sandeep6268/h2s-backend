@@ -15,6 +15,41 @@ from .models import CertificateRequest
 from .serializers import CertificateRequestSerializer
 
 
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from .models import CustomUser, Course
+from .serializers import UserWithCoursesSerializer
+import json
+
+class PurchaseCourseView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        course_url = request.data.get('course_url')
+        
+        if not course_url:
+            return Response({"error": "Course URL is required"}, status=400)
+            
+        # Save to database
+        Course.objects.create(
+            user=request.user,
+            course_url=course_url
+        )
+        
+        return Response({"message": "Course purchased successfully!"})
+
+class UserCoursesView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        serializer = UserWithCoursesSerializer(user)
+        return Response(serializer.data)
+
+
+
 class SubmitCertificateRequest(APIView):
     def post(self, request):
         serializer = CertificateRequestSerializer(data=request.data)

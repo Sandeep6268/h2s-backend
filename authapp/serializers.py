@@ -6,6 +6,22 @@ from .models import CustomUser  # Adjust if your import path is different
 from rest_framework import serializers
 from .models import CertificateRequest
 
+
+from rest_framework import serializers
+from .models import CustomUser, Course
+
+class CourseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Course
+        fields = ['course_url', 'purchased_at']
+
+class UserWithCoursesSerializer(serializers.ModelSerializer):
+    courses = CourseSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'courses']
+
 class CertificateRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = CertificateRequest

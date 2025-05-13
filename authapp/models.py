@@ -4,6 +4,24 @@ from django.db import models
 
 # authapp/models.py
 
+class Course(models.Model):
+    COURSE_CHOICES = [
+        ('/htmlcss89', 'HTML + CSS'),
+        ('/htmlcssjs62', 'HTML + CSS + JS'),
+        ('/python24', 'Python'),
+        ('/pythondjango90', 'Python + Django'),
+        ('/react79', 'React'),
+        ('/reactandjs43', 'React + JavaScript'),
+    ]
+    
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
+    course_url = models.CharField(max_length=50, choices=COURSE_CHOICES)
+    purchased_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.course_url}"
+
+
 
 class CertificateRequest(models.Model):
     COURSE_CHOICES = [
