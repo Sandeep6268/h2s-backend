@@ -20,7 +20,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import CustomUser, Course
-from .serializers import UserWithCoursesSerializer
+from .serializers import UserWithCoursesSerializer,CourseSerializer
 import json
 
 class PurchaseCourseView(APIView):
@@ -42,10 +42,10 @@ class PurchaseCourseView(APIView):
 
 class UserCoursesView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
-        user = request.user
-        serializer = UserWithCoursesSerializer(user)
+        courses = Course.objects.filter(user=request.user)
+        serializer = CourseSerializer(courses, many=True)
         return Response(serializer.data)
 
 
