@@ -27,7 +27,7 @@ import json
 
 from .models import ContactSubmission
 from .serializers import ContactSubmissionSerializer
-from cashfree_pg.models import OrderRequest
+# from cashfree_pg.models import OrderRequest
 from cashfree_pg.api_client import Cashfree
 from cashfree_pg.exceptions import ApiException
 from django.conf import settings
