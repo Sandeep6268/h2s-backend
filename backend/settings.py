@@ -96,11 +96,12 @@ import os
 
 load_dotenv()  # Load .env
 
-CASHFREE = {
-    'APP_ID': os.getenv('CASHFREE_APP_ID'),
-    'SECRET_KEY': os.getenv('CASHFREE_SECRET_KEY'),
-    'ENVIRONMENT': os.getenv('CASHFREE_ENVIRONMENT'),
-}
+CASHFREE_APP_ID = os.getenv('CASHFREE_APP_ID')
+CASHFREE_SECRET_KEY = os.getenv('CASHFREE_SECRET_KEY')
+CASHFREE_API_VERSION = "2022-09-01"
+CASHFREE_ENVIRONMENT = "PRODUCTION" 
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://h2stechsolutions.netlify.app')
+BACKEND_URL = os.getenv('BACKEND_URL', 'https://h2s-backend-urrt.onrender.com')
 
 ROOT_URLCONF = 'backend.urls'
 
