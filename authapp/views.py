@@ -23,6 +23,18 @@ from .models import CustomUser, Course
 from .serializers import UserWithCoursesSerializer,CourseSerializer
 import json
 
+
+
+from .models import ContactSubmission
+from .serializers import ContactSubmissionSerializer
+
+class SubmitContactForm(APIView):
+    def post(self, request):
+        serializer = ContactSubmissionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message': 'Thank you for your submission!'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 class PurchaseCourseView(APIView):
     permission_classes = [IsAuthenticated]
     
