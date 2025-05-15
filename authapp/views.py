@@ -35,8 +35,13 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
-
+# views.py
 import logging
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.conf import settings
+
 logger = logging.getLogger(__name__)
 
 class CreateCashfreeOrder(APIView):
@@ -44,27 +49,29 @@ class CreateCashfreeOrder(APIView):
 
     def post(self, request):
         try:
-            logger.info(f"Received payment request: {request.data}")
+            # 1. Validate input data
+            amount = request.data.get('amount')
+            course_url = request.data.get('course_url')
             
-            if not all(k in request.data for k in ['amount', 'course_url']):
+            if not all([amount, course_url]):
                 return Response(
-                    {"error": "Missing required fields (amount, course_url)"},
+                    {"error": "Both amount and course_url are required"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            # Configuration
-            base_url = "https://sandbox.cashfree.com" if settings.DEBUG else "https://api.cashfree.com"
-            endpoint = f"{base_url}/pg/orders"
             
-            headers = {
-                "x-client-id": settings.CASHFREE_APP_ID,
-                "x-client-secret": settings.CASHFREE_SECRET_KEY,
-                "x-api-version": "2022-09-01",
-                "Content-Type": "application/json"
-            }
-            
-            # Prepare order data
-            data = {
-                "order_amount": float(request.data['amount']),
+            try:
+                amount = float(amount)
+                if amount <= 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                return Response(
+                    {"error": "Amount must be a positive number"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # 2. Prepare Cashfree request
+            cashfree_data = {
+                "order_amount": amount,
                 "order_currency": "INR",
                 "order_id": f"ORDER_{request.user.id}_{int(time.time())}",
                 "customer_details": {
@@ -73,22 +80,39 @@ class CreateCashfreeOrder(APIView):
                     "customer_phone": getattr(request.user, 'phone', "9999999999")
                 },
                 "order_meta": {
-                    "return_url": f"{settings.FRONTEND_URL}/payment-success?course_url={request.data.get('course_url')}",
+                    "return_url": f"{settings.FRONTEND_URL}/payment-success",
                     "notify_url": f"{settings.BACKEND_URL}/api/cashfree-webhook/"
                 }
             }
-            
-            # Make API call
-            response = requests.post(endpoint, json=data, headers=headers)
-            response.raise_for_status()  # Raises exception for 4XX/5XX responses
-            
-            return Response(response.json())
-            
-        except Exception as e:
-            return Response(
-                {"error": "Payment processing failed", "details": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
+
+            # 3. Make Cashfree API call
+            response = requests.post(
+                "https://api.cashfree.com/pg/orders",
+                json=cashfree_data,
+                headers={
+                    "x-client-id": settings.CASHFREE_APP_ID,
+                    "x-client-secret": settings.CASHFREE_SECRET_KEY,
+                    "x-api-version": "2022-09-01"
+                }
             )
+            
+            # 4. Handle Cashfree response
+            if response.status_code == 200:
+                return Response(response.json())
+            else:
+                logger.error(f"Cashfree API error: {response.text}")
+                return Response(
+                    {"error": "Payment gateway error"},
+                    status=status.HTTP_502_BAD_GATEWAY
+                )
+
+        except Exception as e:
+            logger.exception("Payment processing failed")
+            return Response(
+                {"error": "Internal server error"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
         
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
