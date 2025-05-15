@@ -27,7 +27,7 @@ import json
 
 from .models import ContactSubmission
 from .serializers import ContactSubmissionSerializer
-from cashfree_pg import OrderCreateRequest, OrderPayRequest
+from cashfree_pg.models import OrderRequest
 from cashfree_pg.api_client import Cashfree
 from cashfree_pg.exceptions import ApiException
 from django.conf import settings
@@ -60,20 +60,21 @@ class CreateCashfreeOrder(APIView):
                 )
 
             # Create order request
-            order_request = OrderCreateRequest(
+            order_request = OrderRequest(
                 order_amount=float(amount),
                 order_currency="INR",
                 order_id=f"ORDER_{request.user.id}_{int(time.time())}",
                 customer_details={
                     "customer_id": str(request.user.id),
                     "customer_email": request.user.email,
-                    "customer_phone": request.user.phone if hasattr(request.user, 'phone') else "9999999999"
+                    "customer_phone": getattr(request.user, 'phone', "9999999999")
                 },
                 order_meta={
                     "return_url": f"https://h2stechsolutions.netlify.app/payment-success?course_url={course_url}",
                     "notify_url": "https://h2s-backend-urrt.onrender.com/api/cashfree-webhook/"
                 }
             )
+            
 
             # Create order
             order_response = cashfree.orders_create_order(order_request)
