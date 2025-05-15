@@ -7,6 +7,6 @@ urlpatterns = [
     path('purchase-course/', PurchaseCourseView.as_view(), name='purchase-course'),
     path('my-courses/', UserCoursesView.as_view(), name='user-courses'),
     path('contact/', SubmitContactForm.as_view(), name='contact-submission'),
-    path('create-cashfree-order/', CreateCashfreeOrder.as_view(), name='create-cashfree-order'),
-    path('cashfree-webhook/', cashfree_webhook, name='cashfree-webhook'),
+    path('create-cashfree-order/', CreateCashfreeOrder.as_view()),
+    path('cashfree-webhook/', cashfree_webhook),
 ]

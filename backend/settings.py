@@ -82,7 +82,8 @@ CSRF_TRUSTED_ORIGINS = [
     'https://h2stechsolutions.netlify.app',
     'https://h2stechsolutions.netlify.app/',
     'https://h2s-backend-urrt.onrender.com',
-    'https://h2s-backend-urrt.onrender.com/'
+    'https://h2s-backend-urrt.onrender.com/',
+    'https://*.cashfree.com',
 ]
 ALLOWED_HOSTS = [
     'h2stechsolutions.netlify.app',
