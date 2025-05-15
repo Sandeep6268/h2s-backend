@@ -59,6 +59,10 @@ CORS_ALLOWED_ORIGINS = [
     "https://h2stechsolutions.netlify.app",
     "https://h2s-backend-urrt.onrender.com",
 ]
+CORS_ALLOW_HEADERS = [
+    'authorization',
+    'content-type',
+]
 
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 365  # 1 saal ka session (seconds mein)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Jab browser band ho to session expire na ho
@@ -77,6 +81,18 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+}
+
+# settings.py
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 CSRF_TRUSTED_ORIGINS = [
     'https://h2stechsolutions.netlify.app',

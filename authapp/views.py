@@ -36,11 +36,21 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
 
+import logging
+logger = logging.getLogger(__name__)
+
 class CreateCashfreeOrder(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
+            logger.info(f"Received payment request: {request.data}")
+            
+            if not all(k in request.data for k in ['amount', 'course_url']):
+                return Response(
+                    {"error": "Missing required fields (amount, course_url)"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             # Configuration
             base_url = "https://sandbox.cashfree.com" if settings.DEBUG else "https://api.cashfree.com"
             endpoint = f"{base_url}/pg/orders"
