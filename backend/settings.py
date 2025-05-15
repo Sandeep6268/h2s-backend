@@ -91,6 +91,16 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
 ]
 AUTH_USER_MODEL = 'authapp.CustomUser'
+from dotenv import load_dotenv
+import os
+
+load_dotenv()  # Load .env
+
+CASHFREE = {
+    'APP_ID': os.getenv('CASHFREE_APP_ID'),
+    'SECRET_KEY': os.getenv('CASHFREE_SECRET_KEY'),
+    'ENVIRONMENT': os.getenv('CASHFREE_ENVIRONMENT'),
+}
 
 ROOT_URLCONF = 'backend.urls'
 
