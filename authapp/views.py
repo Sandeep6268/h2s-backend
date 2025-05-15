@@ -34,7 +34,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
-from cashfree_pg import OrderCreateRequest
+from cashfree_pg.models import OrderRequest
+from cashfree_pg.api_client import Cashfree
+from cashfree_pg.exceptions import ApiException
 from cashfree_pg.api_client import Cashfree
 from cashfree_pg.exceptions import ApiException
 
@@ -59,17 +61,17 @@ class CreateCashfreeOrder(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            order_request = OrderCreateRequest(
+            order_request = OrderRequest(
                 order_amount=float(amount),
                 order_currency="INR",
                 order_id=f"ORDER_{request.user.id}_{int(time.time())}",
                 customer_details={
                     "customer_id": str(request.user.id),
                     "customer_email": request.user.email,
-                    "customer_phone": request.user.phone if hasattr(request.user, 'phone') else "9999999999"
+                    "customer_phone": getattr(request.user, 'phone', "9999999999")
                 },
                 order_meta={
-                    "return_url": f"{settings.FRONTEND_URL}/payment-success?course_url={course_url}",
+                    "return_url": f"{settings.FRONTEND_URL}/payment-success",
                     "notify_url": f"{settings.BACKEND_URL}/api/cashfree-webhook/"
                 }
             )
