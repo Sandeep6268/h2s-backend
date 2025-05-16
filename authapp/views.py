@@ -195,6 +195,7 @@ class CreateCashfreeOrder(APIView):
                 "x-api-version": "2022-09-01"
             }
 
+            # IMPORTANT CHANGE: Use frontend payment status page instead of direct course URL
             payload = {
                 "order_id": order_id,
                 "order_amount": amount,
@@ -207,7 +208,8 @@ class CreateCashfreeOrder(APIView):
                     "customer_phone": (user.phone or "9999999999")[:10]
                 },
                 "order_meta": {
-                    "return_url": f"{settings.FRONTEND_URL}",
+                    # Always redirect to payment status page after payment attempt
+                    "return_url": f"{settings.FRONTEND_URL}/payment-status?order_id={order_id}",
                     "notify_url": f"{settings.BACKEND_URL}/api/cashfree-webhook/"
                 }
             }
@@ -235,7 +237,6 @@ class CreateCashfreeOrder(APIView):
             })
 
         except requests.exceptions.RequestException as e:
-            # Update order status if Cashfree API fails
             if 'order' in locals():
                 order.status = 'FAILED'
                 order.save()
@@ -254,32 +255,37 @@ class CreateCashfreeOrder(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 # views.py
+# views.py
 class VerifyPayment(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        order_id = request.data.get('orderId')
+        if not order_id:
+            return Response(
+                {"error": "Order ID is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
-            order_id = request.data.get('orderId')
-            payment_id = request.data.get('paymentId')
+            order = Order.objects.get(order_id=order_id)
             
-            # Verify with Cashfree API
-            cashfree_url = f"https://api.cashfree.com/pg/orders/{order_id}/payments/{payment_id}"
-            headers = {
-                "x-client-id": settings.CASHFREE_APP_ID,
-                "x-client-secret": settings.CASHFREE_SECRET_KEY,
-                "x-api-version": "2022-09-01"
-            }
+            if order.status == 'SUCCESS':
+                return Response({
+                    "status": "success",
+                    "course_url": order.course_url
+                })
+                
+            return Response({
+                "status": "pending",
+                "message": "Payment not yet verified"
+            }, status=status.HTTP_400_BAD_REQUEST)
             
-            response = requests.get(cashfree_url, headers=headers)
-            response.raise_for_status()
-            payment_data = response.json()
-            
-            if payment_data.get("payment_status") == "SUCCESS":
-                return Response({"status": "success"})
-            return Response({"status": "failed"}, status=400)
-            
-        except Exception as e:
-            return Response({"error": str(e)}, status=400) 
+        except Order.DoesNotExist:
+            return Response(
+                {"error": "Order not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
 # views.py
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
