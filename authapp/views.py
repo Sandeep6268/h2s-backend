@@ -220,6 +220,13 @@ import requests
 from django.conf import settings
 from .models import Course
 
+# views.py
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+import requests
+from django.conf import settings
+
 class VerifyPayment(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -227,9 +234,15 @@ class VerifyPayment(APIView):
         order_id = request.GET.get('order_id')
         payment_id = request.GET.get('payment_id')
         
-        if not order_id or not payment_id:
+        if not order_id:
             return Response(
-                {"status": "FAILED", "message": "Missing order_id or payment_id"},
+                {"status": "FAILED", "message": "Missing order_id parameter"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not payment_id:
+            return Response(
+                {"status": "FAILED", "message": "Missing payment_id parameter"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -249,7 +262,7 @@ class VerifyPayment(APIView):
             
             if response.status_code != 200:
                 return Response(
-                    {"status": "FAILED", "message": "Could not verify payment"},
+                    {"status": "FAILED", "message": "Could not verify payment status"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
@@ -258,12 +271,12 @@ class VerifyPayment(APIView):
             if payment_data.get("payment_status") == "SUCCESS":
                 return Response({
                     "status": "SUCCESS",
-                    "message": "Payment verified"
+                    "message": "Payment verified successfully"
                 })
             
             return Response({
-                "status": "PENDING", 
-                "message": "Payment not completed"
+                "status": "PENDING",
+                "message": "Payment not yet completed"
             }, status=status.HTTP_400_BAD_REQUEST)
             
         except Exception as e:
@@ -271,7 +284,6 @@ class VerifyPayment(APIView):
                 {"status": "ERROR", "message": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 class PurchaseCourseView(APIView):
     permission_classes = [IsAuthenticated]
 
