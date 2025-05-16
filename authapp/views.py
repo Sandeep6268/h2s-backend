@@ -35,7 +35,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
-
+from urllib.parse import quote
 class SubmitContactForm(APIView):
     def post(self, request):
         serializer = ContactSubmissionSerializer(data=request.data)
@@ -163,8 +163,16 @@ class CreateCashfreeOrder(APIView):
                     "customer_email": user.email,
                     "customer_phone": (user.phone or "9999999999")[:10]
                 },
+                
+
+
                 "order_meta": {
-                    "return_url": f"{settings.FRONTEND_URL}/payment-status?order_id={order_id}",
+                    "return_url": (
+                        f"{settings.FRONTEND_URL}/payment-status?"
+                        f"order_id={order_id}&"
+                        f"course_url={quote(course_url)}&"
+                        f"payment_status={{payment_status}}"
+                    ),
                     "notify_url": f"{settings.BACKEND_URL}/api/cashfree-webhook/"
                 }
             }
