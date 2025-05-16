@@ -62,46 +62,45 @@ class SubmitContactForm(APIView):
 
 # views.py
 # views.py
-from django.db import transaction
-
 class PurchaseCourseView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
-            with transaction.atomic():
-                course_url = request.data.get('course_url')
-                payment_id = request.data.get('payment_id')
-                order_id = request.data.get('order_id')
-                user = request.user
-                
-                if not all([course_url, payment_id, order_id]):
-                    return Response(
-                        {"error": "All fields are required"},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-
-                # Check if exists using payment_id as primary identifier
-                course, created = Course.objects.get_or_create(
-                    payment_id=payment_id,
-                    defaults={
-                        'user': user,
-                        'course_url': course_url,
-                        'order_id': order_id,
-                        'status': 'ACTIVE'
-                    }
+            course_url = request.data.get('course_url')
+            payment_id = request.data.get('payment_id')
+            order_id = request.data.get('order_id')
+            user = request.user
+            
+            if not all([course_url, payment_id, order_id]):
+                return Response(
+                    {"error": "All fields are required"},
+                    status=status.HTTP_400_BAD_REQUEST
                 )
 
-                if not created:
-                    # Update if any details changed
-                    course.order_id = order_id
-                    course.status = 'ACTIVE'
-                    course.save(update_fields=['order_id', 'status'])
+            # Check if course already exists
+            if Course.objects.filter(user=user, course_url=course_url).exists():
+                return Response(
+                    {"message": "Course already purchased"},
+                    status=status.HTTP_200_OK
+                )
 
-                return Response({
-                    "message": "Course purchased successfully",
-                    "course": CourseSerializer(course).data
-                }, status=status.HTTP_201_CREATED)
+            # Create new course
+            course = Course.objects.create(
+                user=user,
+                course_url=course_url,
+                payment_id=payment_id,
+                order_id=order_id
+            )
+
+            return Response({
+                "message": "Course purchased successfully",
+                "course": {
+                    "id": course.id,
+                    "course_url": course.course_url,
+                    "purchased_at": course.purchased_at
+                }
+            }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             return Response(
@@ -313,17 +312,16 @@ def cashfree_webhook(request):
             if data.get('txStatus') == 'SUCCESS':
                 order_id = data.get('orderId')
                 payment_id = data.get('referenceId')
-                course_url = data.get('orderNote', '').split(": ")[-1]  # Extract course URL
+                course_url = data.get('orderNote', '')
 
                 try:
                     order = Order.objects.get(order_id=order_id)
-                    # Use update_or_create to handle existing entries
-                    Course.objects.update_or_create(
-                        order_id=order_id,
+                    Course.objects.get_or_create(
+                        user=order.user,
+                        course_url=course_url,
                         defaults={
-                            'user': order.user,
-                            'course_url': course_url,
                             'payment_id': payment_id,
+                            'order_id': order_id,
                             'status': 'ACTIVE'
                         }
                     )
