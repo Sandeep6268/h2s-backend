@@ -255,6 +255,20 @@ class CreateCashfreeOrder(APIView):
             )
 # views.py
 # views.py
+
+# views.py
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
+
+# views.py
+# views.py
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse, JsonResponse
+import json
+import hmac
+import hashlib
+from django.contrib.auth.models import User 
+# views.py
 class VerifyPayment(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -270,10 +284,7 @@ class VerifyPayment(APIView):
             ).first()
             
             if existing_order:
-                return Response({
-                    "status": "success",
-                    "message": "Already verified"
-                })
+                return Response({"status": "success", "message": "Already verified"})
 
             # 2. Verify with Cashfree API
             headers = {
@@ -288,26 +299,32 @@ class VerifyPayment(APIView):
                 timeout=10
             )
             
-            # 3. Validate response
             if response.status_code != 200:
                 return Response(
-                    {"error": "Unable to verify payment"},
+                    {"status": "failed", "error": "Payment verification failed"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
                 
             payment_data = response.json()
             
-            # 4. Process successful payment
+            # 3. Process successful payment
             if payment_data.get("payment_status") == "SUCCESS":
                 # Update order status
-                Order.objects.filter(order_id=order_id).update(status='SUCCESS')
+                Order.objects.filter(order_id=order_id).update(
+                    status='SUCCESS',
+                    payment_id=payment_id
+                )
+                
+                # Get course URL from order
+                order = Order.objects.get(order_id=order_id)
                 
                 # Create course enrollment
                 Course.objects.get_or_create(
                     user=request.user,
-                    order_id=order_id,
+                    course_url=order.course_url,
                     defaults={
                         'payment_id': payment_id,
+                        'order_id': order_id,
                         'status': 'ACTIVE'
                     }
                 )
@@ -315,32 +332,21 @@ class VerifyPayment(APIView):
                 return Response({"status": "success"})
             
             return Response(
-                {"status": "pending"},
+                {"status": "pending", "message": "Payment not completed"},
                 status=status.HTTP_200_OK
             )
             
         except Exception as e:
             return Response(
-                {"error": str(e)},
+                {"status": "error", "error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-# views.py
-from django.views.decorators.csrf import csrf_exempt
-from django.http import HttpResponse
 
-# views.py
-# views.py
-from django.views.decorators.csrf import csrf_exempt
-from django.http import HttpResponse, JsonResponse
-import json
-import hmac
-import hashlib
-from django.contrib.auth.models import User 
 @csrf_exempt
 def cashfree_webhook(request):
     if request.method == "POST":
         try:
-            # Signature verification
+            # Verify signature
             received_signature = request.headers.get('x-cf-signature')
             expected_signature = hmac.new(
                 settings.CASHFREE_SECRET_KEY.encode(),
@@ -355,33 +361,27 @@ def cashfree_webhook(request):
             order_id = data.get('orderId')
             
             if data.get('txStatus') == 'SUCCESS':
-                # Get or create order
-                order, created = Order.objects.get_or_create(
-                    order_id=order_id,
-                    defaults={
-                        'status': 'SUCCESS',
-                        'user': User.objects.get(id=data.get('customerId')),
-                        # ... other fields
-                    }
-                )
+                payment_id = data.get('referenceId')
                 
-                if not created:
+                # Update order status
+                order = Order.objects.filter(order_id=order_id).first()
+                if order:
                     order.status = 'SUCCESS'
+                    order.payment_id = payment_id
                     order.save()
-                
-                # Create course enrollment
-                Course.objects.get_or_create(
-                    user=order.user,
-                    course_url=data.get('orderNote'),
-                    defaults={
-                        'payment_id': data.get('referenceId'),
-                        'order_id': order_id,
-                        'status': 'ACTIVE'
-                    }
-                )
+                    
+                    # Create course enrollment
+                    Course.objects.get_or_create(
+                        user=order.user,
+                        course_url=order.course_url,
+                        defaults={
+                            'payment_id': payment_id,
+                            'order_id': order_id,
+                            'status': 'ACTIVE'
+                        }
+                    )
                 
             return HttpResponse(status=200)
-            
         except Exception as e:
             print(f"Webhook error: {str(e)}")
             return HttpResponse(status=400)
