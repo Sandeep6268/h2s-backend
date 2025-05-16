@@ -177,10 +177,15 @@ class CreateCashfreeOrder(APIView):
                 status="CREATED"
             )
             
+            print("Cashfree payload:", payload)
+            print("Cashfree response:", cashfree_data)
+            
             return Response({
                 "orderId": order_id,
                 "paymentSessionId": cashfree_data.get("payment_session_id")
             })
+           
+    
             
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
