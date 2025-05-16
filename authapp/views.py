@@ -154,7 +154,6 @@ class CreateCashfreeOrder(APIView):
                     "customer_id": str(user.id),
                     "customer_name": user.username,
                     "customer_email": user.email,
-                    "customer_phone": user.phone or "9999999999"
                 },
                 "order_meta": {
                     "return_url": f"{settings.FRONTEND_URL}{course_url}?order_id={order_id}",
