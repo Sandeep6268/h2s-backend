@@ -62,51 +62,7 @@ class SubmitContactForm(APIView):
 
 # views.py
 # views.py
-class PurchaseCourseView(APIView):
-    permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        try:
-            course_url = request.data.get('course_url')
-            payment_id = request.data.get('payment_id')
-            order_id = request.data.get('order_id')
-            user = request.user
-            
-            if not all([course_url, payment_id, order_id]):
-                return Response(
-                    {"error": "All fields are required"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Check if course already exists
-            if Course.objects.filter(user=user, course_url=course_url).exists():
-                return Response(
-                    {"message": "Course already purchased"},
-                    status=status.HTTP_200_OK
-                )
-
-            # Create new course
-            course = Course.objects.create(
-                user=user,
-                course_url=course_url,
-                payment_id=payment_id,
-                order_id=order_id
-            )
-
-            return Response({
-                "message": "Course purchased successfully",
-                "course": {
-                    "id": course.id,
-                    "course_url": course.course_url,
-                    "purchased_at": course.purchased_at
-                }
-            }, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
 
 class UserCoursesView(APIView):
     permission_classes = [IsAuthenticated]
@@ -256,6 +212,14 @@ class CreateCashfreeOrder(APIView):
 # views.py
 # views.py
 # Django View Example
+# views.py
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+import requests
+from django.conf import settings
+from .models import Course
+
 class VerifyPayment(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -263,39 +227,82 @@ class VerifyPayment(APIView):
         order_id = request.GET.get('order_id')
         payment_id = request.GET.get('payment_id')
         
+        if not order_id or not payment_id:
+            return Response(
+                {"status": "FAILED", "message": "Missing order_id or payment_id"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
-            # 1. Verify with Cashfree API
+            # Verify with Cashfree API
             headers = {
                 "x-client-id": settings.CASHFREE_APP_ID,
                 "x-client-secret": settings.CASHFREE_SECRET_KEY,
                 "x-api-version": "2022-09-01"
             }
             
-            cf_response = requests.get(
+            response = requests.get(
                 f"https://api.cashfree.com/pg/orders/{order_id}/payments/{payment_id}",
-                headers=headers
+                headers=headers,
+                timeout=10
             )
             
-            if cf_response.status_code != 200:
+            if response.status_code != 200:
                 return Response(
-                    {"status": "FAILED", "message": "Payment verification failed"},
+                    {"status": "FAILED", "message": "Could not verify payment"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            payment_data = cf_response.json()
+            payment_data = response.json()
             
-            # 2. Check payment status
             if payment_data.get("payment_status") == "SUCCESS":
                 return Response({
                     "status": "SUCCESS",
-                    "message": "Payment verified successfully"
+                    "message": "Payment verified"
                 })
             
             return Response({
-                "status": "PENDING",
+                "status": "PENDING", 
                 "message": "Payment not completed"
             }, status=status.HTTP_400_BAD_REQUEST)
             
+        except Exception as e:
+            return Response(
+                {"status": "ERROR", "message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class PurchaseCourseView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            order_id = request.data.get('order_id')
+            payment_id = request.data.get('payment_id')
+            course_url = request.data.get('course_url')
+            user = request.user
+
+            # Check if already enrolled
+            if Course.objects.filter(order_id=order_id).exists():
+                return Response(
+                    {"status": "SUCCESS", "message": "Already enrolled"},
+                    status=status.HTTP_200_OK
+                )
+
+            # Create new enrollment
+            Course.objects.create(
+                user=user,
+                course_url=course_url,
+                order_id=order_id,
+                payment_id=payment_id,
+                status='ACTIVE'
+            )
+
+            return Response({
+                "status": "SUCCESS",
+                "message": "Course enrolled successfully"
+            })
+
         except Exception as e:
             return Response(
                 {"status": "ERROR", "message": str(e)},
