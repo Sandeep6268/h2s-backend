@@ -214,7 +214,7 @@ class CreateCashfreeOrder(APIView):
 
             # 5. Make request to Cashfree
             response = requests.post(
-                "https://api.cashfree.com/pg/orders",
+                "POST https://sandbox.cashfree.com/pg/orders",
                 json=payload,
                 headers=headers,
                 timeout=10
@@ -254,6 +254,7 @@ class CreateCashfreeOrder(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 # views.py
+# views.py
 class VerifyPayment(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -263,10 +264,18 @@ class VerifyPayment(APIView):
             payment_id = request.data.get('paymentId')
             
             # 1. Check if already processed
-            if Order.objects.filter(order_id=order_id, status='SUCCESS').exists():
-                return Response({"status": "success"})
-                
-            # 2. Verify with Cashfree
+            existing_order = Order.objects.filter(
+                order_id=order_id, 
+                status='SUCCESS'
+            ).first()
+            
+            if existing_order:
+                return Response({
+                    "status": "success",
+                    "message": "Already verified"
+                })
+
+            # 2. Verify with Cashfree API
             headers = {
                 "x-client-id": settings.CASHFREE_APP_ID,
                 "x-client-secret": settings.CASHFREE_SECRET_KEY,
@@ -275,20 +284,46 @@ class VerifyPayment(APIView):
             
             response = requests.get(
                 f"https://api.cashfree.com/pg/orders/{order_id}/payments/{payment_id}",
-                headers=headers
+                headers=headers,
+                timeout=10
             )
-            response.raise_for_status()
             
-            payment_data = response.json()
-            if payment_data.get("payment_status") == "SUCCESS":
-                # 3. Update order status
-                Order.objects.filter(order_id=order_id).update(status='SUCCESS')
-                return Response({"status": "success"})
+            # 3. Validate response
+            if response.status_code != 200:
+                return Response(
+                    {"error": "Unable to verify payment"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
                 
-            return Response({"status": "pending"}, status=200)
+            payment_data = response.json()
+            
+            # 4. Process successful payment
+            if payment_data.get("payment_status") == "SUCCESS":
+                # Update order status
+                Order.objects.filter(order_id=order_id).update(status='SUCCESS')
+                
+                # Create course enrollment
+                Course.objects.get_or_create(
+                    user=request.user,
+                    order_id=order_id,
+                    defaults={
+                        'payment_id': payment_id,
+                        'status': 'ACTIVE'
+                    }
+                )
+                
+                return Response({"status": "success"})
+            
+            return Response(
+                {"status": "pending"},
+                status=status.HTTP_200_OK
+            )
             
         except Exception as e:
-            return Response({"error": str(e)}, status=400)
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 # views.py
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
