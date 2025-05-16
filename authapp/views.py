@@ -214,7 +214,7 @@ class CreateCashfreeOrder(APIView):
 
             # 5. Make request to Cashfree
             response = requests.post(
-                "POST https://sandbox.cashfree.com/pg/orders",
+                "https://api.cashfree.com/pg/orders",
                 json=payload,
                 headers=headers,
                 timeout=10
