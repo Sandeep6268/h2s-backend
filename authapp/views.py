@@ -207,7 +207,7 @@ class CreateCashfreeOrder(APIView):
                     "customer_phone": (user.phone or "9999999999")[:10]
                 },
                 "order_meta": {
-                    "return_url": f"{settings.FRONTEND_URL}{course_url}",
+                    "return_url": f"{settings.FRONTEND_URL}",
                     "notify_url": f"{settings.BACKEND_URL}/api/cashfree-webhook/"
                 }
             }
