@@ -262,24 +262,33 @@ class VerifyPayment(APIView):
             order_id = request.data.get('orderId')
             payment_id = request.data.get('paymentId')
             
-            # Verify with Cashfree API
-            cashfree_url = f"https://api.cashfree.com/pg/orders/{order_id}/payments/{payment_id}"
+            # 1. Check if already processed
+            if Order.objects.filter(order_id=order_id, status='SUCCESS').exists():
+                return Response({"status": "success"})
+                
+            # 2. Verify with Cashfree
             headers = {
                 "x-client-id": settings.CASHFREE_APP_ID,
                 "x-client-secret": settings.CASHFREE_SECRET_KEY,
                 "x-api-version": "2022-09-01"
             }
             
-            response = requests.get(cashfree_url, headers=headers)
+            response = requests.get(
+                f"https://api.cashfree.com/pg/orders/{order_id}/payments/{payment_id}",
+                headers=headers
+            )
             response.raise_for_status()
-            payment_data = response.json()
             
+            payment_data = response.json()
             if payment_data.get("payment_status") == "SUCCESS":
+                # 3. Update order status
+                Order.objects.filter(order_id=order_id).update(status='SUCCESS')
                 return Response({"status": "success"})
-            return Response({"status": "failed"}, status=400)
+                
+            return Response({"status": "pending"}, status=200)
             
         except Exception as e:
-            return Response({"error": str(e)}, status=400) 
+            return Response({"error": str(e)}, status=400)
 # views.py
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
@@ -296,11 +305,10 @@ import hashlib
 def cashfree_webhook(request):
     if request.method == "POST":
         try:
-            # Verify signature
+            # Signature verification
             received_signature = request.headers.get('x-cf-signature')
-            secret_key = settings.CASHFREE_SECRET_KEY.encode()
             expected_signature = hmac.new(
-                secret_key,
+                settings.CASHFREE_SECRET_KEY.encode(),
                 request.body,
                 hashlib.sha256
             ).hexdigest()
@@ -309,26 +317,36 @@ def cashfree_webhook(request):
                 return HttpResponse("Invalid signature", status=403)
 
             data = json.loads(request.body)
+            order_id = data.get('orderId')
+            
             if data.get('txStatus') == 'SUCCESS':
-                order_id = data.get('orderId')
-                payment_id = data.get('referenceId')
-                course_url = data.get('orderNote', '')
-
-                try:
-                    order = Order.objects.get(order_id=order_id)
-                    Course.objects.get_or_create(
-                        user=order.user,
-                        course_url=course_url,
-                        defaults={
-                            'payment_id': payment_id,
-                            'order_id': order_id,
-                            'status': 'ACTIVE'
-                        }
-                    )
-                except Order.DoesNotExist:
-                    print(f"Order not found: {order_id}")
+                # Get or create order
+                order, created = Order.objects.get_or_create(
+                    order_id=order_id,
+                    defaults={
+                        'status': 'SUCCESS',
+                        'user': User.objects.get(id=data.get('customerId')),
+                        # ... other fields
+                    }
+                )
+                
+                if not created:
+                    order.status = 'SUCCESS'
+                    order.save()
+                
+                # Create course enrollment
+                Course.objects.get_or_create(
+                    user=order.user,
+                    course_url=data.get('orderNote'),
+                    defaults={
+                        'payment_id': data.get('referenceId'),
+                        'order_id': order_id,
+                        'status': 'ACTIVE'
+                    }
+                )
                 
             return HttpResponse(status=200)
+            
         except Exception as e:
             print(f"Webhook error: {str(e)}")
             return HttpResponse(status=400)
