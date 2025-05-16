@@ -255,35 +255,79 @@ class CreateCashfreeOrder(APIView):
             )
 # views.py
 # views.py
+# Django View Example
 class VerifyPayment(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        order_id = request.data.get('orderId')
-        if not order_id:
-            return Response(
-                {"error": "Order ID is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
+    def get(self, request):
+        order_id = request.GET.get('order_id')
+        payment_id = request.GET.get('payment_id')
+        
         try:
-            order = Order.objects.get(order_id=order_id)
+            # 1. Verify with Cashfree API
+            headers = {
+                "x-client-id": settings.CASHFREE_APP_ID,
+                "x-client-secret": settings.CASHFREE_SECRET_KEY,
+                "x-api-version": "2022-09-01"
+            }
             
-            if order.status == 'SUCCESS':
+            cf_response = requests.get(
+                f"https://api.cashfree.com/pg/orders/{order_id}/payments/{payment_id}",
+                headers=headers
+            )
+            
+            if cf_response.status_code != 200:
+                return Response(
+                    {"status": "FAILED", "message": "Payment verification failed"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            payment_data = cf_response.json()
+            
+            # 2. Check payment status
+            if payment_data.get("payment_status") == "SUCCESS":
                 return Response({
-                    "status": "success",
-                    "course_url": order.course_url
+                    "status": "SUCCESS",
+                    "message": "Payment verified successfully"
                 })
-                
+            
             return Response({
-                "status": "pending",
-                "message": "Payment not yet verified"
+                "status": "PENDING",
+                "message": "Payment not completed"
             }, status=status.HTTP_400_BAD_REQUEST)
             
-        except Order.DoesNotExist:
+        except Exception as e:
             return Response(
-                {"error": "Order not found"},
-                status=status.HTTP_404_NOT_FOUND
+                {"status": "ERROR", "message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class EnrollCourse(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            order_id = request.data.get('order_id')
+            course_url = request.data.get('course_url')
+            
+            # Check if already enrolled
+            if Course.objects.filter(order_id=order_id).exists():
+                return Response({"status": "SUCCESS", "message": "Already enrolled"})
+                
+            # Create enrollment
+            Course.objects.create(
+                user=request.user,
+                course_url=course_url,
+                order_id=order_id,
+                status='ACTIVE'
+            )
+            
+            return Response({"status": "SUCCESS"})
+            
+        except Exception as e:
+            return Response(
+                {"status": "ERROR", "message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 # views.py
 from django.views.decorators.csrf import csrf_exempt
