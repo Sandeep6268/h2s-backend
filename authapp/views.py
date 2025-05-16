@@ -177,8 +177,6 @@ class CreateCashfreeOrder(APIView):
                 status="CREATED"
             )
             
-            print("Cashfree payload:", payload)
-            print("Cashfree response:", cashfree_data)
             
             return Response({
                 "orderId": order_id,
