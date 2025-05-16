@@ -171,7 +171,8 @@ class CreateCashfreeOrder(APIView):
                         f"{settings.FRONTEND_URL}/payment-status?"
                         f"order_id={order_id}&"
                         f"course_url={quote(course_url)}&"
-                        f"payment_status={{payment_status}}"
+                        f"payment_status={{payment_status}}&"
+                        f"payment_id={{payment_id}}"
                     ),
                     "notify_url": f"{settings.BACKEND_URL}/api/cashfree-webhook/"
                 }
