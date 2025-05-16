@@ -208,7 +208,6 @@ class CreateCashfreeOrder(APIView):
                     "customer_phone": (user.phone or "9999999999")[:10]
                 },
                 "order_meta": {
-                    # Always redirect to payment status page after payment attempt
                     "return_url": f"{settings.FRONTEND_URL}/payment-status?order_id={order_id}",
                     "notify_url": f"{settings.BACKEND_URL}/api/cashfree-webhook/"
                 }
@@ -339,3 +338,34 @@ def cashfree_webhook(request):
             print(f"Webhook error: {str(e)}")
             return HttpResponse(status=400)
     return HttpResponse(status=405)
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
+from .models import Order  # Update this path based on your project
+
+class CheckPaymentStatus(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        order_id = request.query_params.get('order_id')
+
+        if not order_id:
+            return Response({"error": "Order ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            order = Order.objects.get(order_id=order_id, user=request.user)
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if order.status == "PAID":
+            return Response({
+                "status": "PAID",
+                "redirect_url": order.course_url  # You can append this to frontend URL in frontend
+            })
+        else:
+            return Response({
+                "status": order.status,
+                "redirect_url": "/"  # Send to homepage
+            })
