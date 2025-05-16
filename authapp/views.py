@@ -133,7 +133,7 @@ class CreateCashfreeOrder(APIView):
 
     def post(self, request):
         try:
-            # Input validation
+            # 1. Input validation
             amount = request.data.get('amount')
             course_url = request.data.get('course_url')
             user = request.user
@@ -157,7 +157,19 @@ class CreateCashfreeOrder(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Prepare Cashfree request
+            # 2. Generate unique order ID
+            order_id = f"H2S_{int(time.time())}_{user.id}"
+            
+            # 3. Save order to database first (for webhook reference)
+            order = Order.objects.create(
+                user=user,
+                order_id=order_id,
+                course_url=course_url,
+                amount=amount,
+                status='PENDING'
+            )
+
+            # 4. Prepare Cashfree request
             headers = {
                 "Content-Type": "application/json",
                 "x-client-id": settings.CASHFREE_APP_ID,
@@ -165,11 +177,11 @@ class CreateCashfreeOrder(APIView):
                 "x-api-version": "2022-09-01"
             }
 
-            order_id = f"H2S_{int(time.time())}_{user.id}"
             payload = {
                 "order_id": order_id,
                 "order_amount": amount,
                 "order_currency": "INR",
+                "order_note": f"Course Purchase: {course_url}",
                 "customer_details": {
                     "customer_id": str(user.id),
                     "customer_name": (user.username or "Customer")[:50],
@@ -177,12 +189,12 @@ class CreateCashfreeOrder(APIView):
                     "customer_phone": (user.phone or "9999999999")[:10]
                 },
                 "order_meta": {
-                    "return_url": f"{settings.FRONTEND_URL}/payment-complete?order_id={order_id}",
+                    "return_url": f"{settings.FRONTEND_URL}{course_url}?cf_order_id={order_id}",
                     "notify_url": f"{settings.BACKEND_URL}/api/cashfree-webhook/"
                 }
             }
 
-            # Make request to Cashfree
+            # 5. Make request to Cashfree
             response = requests.post(
                 "https://api.cashfree.com/pg/orders",
                 json=payload,
@@ -190,22 +202,37 @@ class CreateCashfreeOrder(APIView):
                 timeout=10
             )
             
-            # Handle Cashfree response
-            if response.status_code != 200:
-                return Response(
-                    {"error": f"Cashfree API error: {response.text}"},
-                    status=status.HTTP_502_BAD_GATEWAY
-                )
-
+            # 6. Handle Cashfree response
+            response.raise_for_status()
             cashfree_data = response.json()
+
+            # 7. Update order with Cashfree reference
+            order.cashfree_order_id = cashfree_data.get("order_id")
+            order.save()
+
             return Response({
                 "orderId": order_id,
-                "paymentSessionId": cashfree_data["payment_session_id"]
+                "paymentSessionId": cashfree_data["payment_session_id"],
+                "cf_order_id": cashfree_data.get("order_id")
             })
 
+        except requests.exceptions.RequestException as e:
+            # Update order status if Cashfree API fails
+            if 'order' in locals():
+                order.status = 'FAILED'
+                order.save()
+                
+            error_msg = f"Cashfree API error: {str(e)}"
+            if hasattr(e, 'response') and e.response:
+                error_msg += f" | Response: {e.response.text}"
+            return Response(
+                {"error": error_msg},
+                status=status.HTTP_502_BAD_GATEWAY
+            )
+            
         except Exception as e:
             return Response(
-                {"error": str(e)},
+                {"error": f"Internal server error: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 # views.py
@@ -240,31 +267,53 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 
 # views.py
+# views.py
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse, JsonResponse
+import json
+import hmac
+import hashlib
+
 @csrf_exempt
 def cashfree_webhook(request):
     if request.method == "POST":
         try:
-            # Verify webhook signature first
-            signature = request.headers.get("x-cf-signature")
-            # Add signature verification logic
+            # 1. Verify webhook signature
+            received_signature = request.headers.get('x-cf-signature')
+            secret_key = settings.CASHFREE_SECRET_KEY.encode()
+            expected_signature = hmac.new(
+                secret_key,
+                request.body,
+                hashlib.sha256
+            ).hexdigest()
             
+            if not hmac.compare_digest(received_signature, expected_signature):
+                return HttpResponse("Invalid signature", status=403)
+
+            # 2. Process webhook data
             data = json.loads(request.body)
-            order_id = data.get("orderId")
-            payment_status = data.get("paymentStatus")
-            
-            if payment_status == "SUCCESS":
-                # Get order from your database
+            if data.get('txStatus') == 'SUCCESS':
+                order_id = data.get('orderId')
+                payment_id = data.get('referenceId')
+                course_url = data.get('orderNote', '')
+
+                # 3. Get user from order (you'll need to store this when creating order)
                 order = Order.objects.get(order_id=order_id)
-                
-                # Create course purchase
-                Course.objects.create(
-                    user=order.user,
-                    course_url=order.course_url,
-                    order_id=order_id
+                user = order.user
+
+                # 4. Create course purchase
+                Course.objects.get_or_create(
+                    user=user,
+                    course_url=course_url,
+                    defaults={
+                        'payment_id': payment_id,
+                        'order_id': order_id,
+                        'status': 'ACTIVE'
+                    }
                 )
-                
+
             return HttpResponse(status=200)
         except Exception as e:
-            print("Webhook error:", str(e))
+            print(f"Webhook error: {str(e)}")
             return HttpResponse(status=400)
     return HttpResponse(status=405)
