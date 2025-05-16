@@ -254,8 +254,32 @@ class CreateCashfreeOrder(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 # views.py
-# views.py
+class VerifyPayment(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def post(self, request):
+        try:
+            order_id = request.data.get('orderId')
+            payment_id = request.data.get('paymentId')
+            
+            # Verify with Cashfree API
+            cashfree_url = f"https://api.cashfree.com/pg/orders/{order_id}/payments/{payment_id}"
+            headers = {
+                "x-client-id": settings.CASHFREE_APP_ID,
+                "x-client-secret": settings.CASHFREE_SECRET_KEY,
+                "x-api-version": "2022-09-01"
+            }
+            
+            response = requests.get(cashfree_url, headers=headers)
+            response.raise_for_status()
+            payment_data = response.json()
+            
+            if payment_data.get("payment_status") == "SUCCESS":
+                return Response({"status": "success"})
+            return Response({"status": "failed"}, status=400)
+            
+        except Exception as e:
+            return Response({"error": str(e)}, status=400) 
 # views.py
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
@@ -267,80 +291,6 @@ from django.http import HttpResponse, JsonResponse
 import json
 import hmac
 import hashlib
-from django.contrib.auth.models import User 
-# views.py
-class VerifyPayment(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        try:
-            order_id = request.data.get('orderId')
-            payment_id = request.data.get('paymentId')
-            
-            # 1. Check if already processed
-            existing_order = Order.objects.filter(
-                order_id=order_id, 
-                status='SUCCESS'
-            ).first()
-            
-            if existing_order:
-                return Response({"status": "success", "message": "Already verified"})
-
-            # 2. Verify with Cashfree API
-            headers = {
-                "x-client-id": settings.CASHFREE_APP_ID,
-                "x-client-secret": settings.CASHFREE_SECRET_KEY,
-                "x-api-version": "2022-09-01"
-            }
-            
-            response = requests.get(
-                f"https://api.cashfree.com/pg/orders/{order_id}/payments/{payment_id}",
-                headers=headers,
-                timeout=10
-            )
-            
-            if response.status_code != 200:
-                return Response(
-                    {"status": "failed", "error": "Payment verification failed"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-                
-            payment_data = response.json()
-            
-            # 3. Process successful payment
-            if payment_data.get("payment_status") == "SUCCESS":
-                # Update order status
-                Order.objects.filter(order_id=order_id).update(
-                    status='SUCCESS',
-                    payment_id=payment_id
-                )
-                
-                # Get course URL from order
-                order = Order.objects.get(order_id=order_id)
-                
-                # Create course enrollment
-                Course.objects.get_or_create(
-                    user=request.user,
-                    course_url=order.course_url,
-                    defaults={
-                        'payment_id': payment_id,
-                        'order_id': order_id,
-                        'status': 'ACTIVE'
-                    }
-                )
-                
-                return Response({"status": "success"})
-            
-            return Response(
-                {"status": "pending", "message": "Payment not completed"},
-                status=status.HTTP_200_OK
-            )
-            
-        except Exception as e:
-            return Response(
-                {"status": "error", "error": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
 
 @csrf_exempt
 def cashfree_webhook(request):
@@ -348,8 +298,9 @@ def cashfree_webhook(request):
         try:
             # Verify signature
             received_signature = request.headers.get('x-cf-signature')
+            secret_key = settings.CASHFREE_SECRET_KEY.encode()
             expected_signature = hmac.new(
-                settings.CASHFREE_SECRET_KEY.encode(),
+                secret_key,
                 request.body,
                 hashlib.sha256
             ).hexdigest()
@@ -358,28 +309,24 @@ def cashfree_webhook(request):
                 return HttpResponse("Invalid signature", status=403)
 
             data = json.loads(request.body)
-            order_id = data.get('orderId')
-            
             if data.get('txStatus') == 'SUCCESS':
+                order_id = data.get('orderId')
                 payment_id = data.get('referenceId')
-                
-                # Update order status
-                order = Order.objects.filter(order_id=order_id).first()
-                if order:
-                    order.status = 'SUCCESS'
-                    order.payment_id = payment_id
-                    order.save()
-                    
-                    # Create course enrollment
+                course_url = data.get('orderNote', '')
+
+                try:
+                    order = Order.objects.get(order_id=order_id)
                     Course.objects.get_or_create(
                         user=order.user,
-                        course_url=order.course_url,
+                        course_url=course_url,
                         defaults={
                             'payment_id': payment_id,
                             'order_id': order_id,
                             'status': 'ACTIVE'
                         }
                     )
+                except Order.DoesNotExist:
+                    print(f"Order not found: {order_id}")
                 
             return HttpResponse(status=200)
         except Exception as e:
