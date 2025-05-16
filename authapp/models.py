@@ -4,6 +4,7 @@ from django.db import models
 
 # authapp/models.py
 
+# models.py
 class Course(models.Model):
     COURSE_CHOICES = [
         ('/htmlcss89', 'HTML + CSS'),
@@ -16,7 +17,13 @@ class Course(models.Model):
     
     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
     course_url = models.CharField(max_length=50, choices=COURSE_CHOICES)
+    payment_id = models.CharField(max_length=100, blank=True, null=True)
+    order_id = models.CharField(max_length=100, blank=True, null=True)
     purchased_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, default='ACTIVE')
+
+    class Meta:
+        unique_together = ('user', 'course_url')  # Prevent duplicate purchases
 
     def __str__(self):
         return f"{self.user.username} - {self.course_url}"

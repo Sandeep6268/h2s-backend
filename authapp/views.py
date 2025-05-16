@@ -61,6 +61,7 @@ class SubmitContactForm(APIView):
 #         return Response({"message": "Course purchased successfully!"})
 
 # views.py
+# views.py
 class PurchaseCourseView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -69,26 +70,43 @@ class PurchaseCourseView(APIView):
             course_url = request.data.get('course_url')
             payment_id = request.data.get('payment_id')
             order_id = request.data.get('order_id')
+            user = request.user
             
-            if not course_url:
-                return Response({"error": "Course URL is required"}, status=400)
-                
-            # Save to database
-            Course.objects.create(
-                user=request.user,
+            if not all([course_url, payment_id, order_id]):
+                return Response(
+                    {"error": "All fields are required"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Check if course already exists
+            if Course.objects.filter(user=user, course_url=course_url).exists():
+                return Response(
+                    {"message": "Course already purchased"},
+                    status=status.HTTP_200_OK
+                )
+
+            # Create new course
+            course = Course.objects.create(
+                user=user,
                 course_url=course_url,
                 payment_id=payment_id,
-                order_id=order_id,
-                status="ACTIVE"
+                order_id=order_id
             )
-            
+
             return Response({
-                "message": "Course purchased successfully!",
-                "course_url": course_url
-            })
-            
+                "message": "Course purchased successfully",
+                "course": {
+                    "id": course.id,
+                    "course_url": course.course_url,
+                    "purchased_at": course.purchased_at
+                }
+            }, status=status.HTTP_201_CREATED)
+
         except Exception as e:
-            return Response({"error": str(e)}, status=400)
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class UserCoursesView(APIView):
     permission_classes = [IsAuthenticated]
@@ -278,7 +296,7 @@ import hashlib
 def cashfree_webhook(request):
     if request.method == "POST":
         try:
-            # 1. Verify webhook signature
+            # Verify signature
             received_signature = request.headers.get('x-cf-signature')
             secret_key = settings.CASHFREE_SECRET_KEY.encode()
             expected_signature = hmac.new(
@@ -290,28 +308,26 @@ def cashfree_webhook(request):
             if not hmac.compare_digest(received_signature, expected_signature):
                 return HttpResponse("Invalid signature", status=403)
 
-            # 2. Process webhook data
             data = json.loads(request.body)
             if data.get('txStatus') == 'SUCCESS':
                 order_id = data.get('orderId')
                 payment_id = data.get('referenceId')
                 course_url = data.get('orderNote', '')
 
-                # 3. Get user from order (you'll need to store this when creating order)
-                order = Order.objects.get(order_id=order_id)
-                user = order.user
-
-                # 4. Create course purchase
-                Course.objects.get_or_create(
-                    user=user,
-                    course_url=course_url,
-                    defaults={
-                        'payment_id': payment_id,
-                        'order_id': order_id,
-                        'status': 'ACTIVE'
-                    }
-                )
-
+                try:
+                    order = Order.objects.get(order_id=order_id)
+                    Course.objects.get_or_create(
+                        user=order.user,
+                        course_url=course_url,
+                        defaults={
+                            'payment_id': payment_id,
+                            'order_id': order_id,
+                            'status': 'ACTIVE'
+                        }
+                    )
+                except Order.DoesNotExist:
+                    print(f"Order not found: {order_id}")
+                
             return HttpResponse(status=200)
         except Exception as e:
             print(f"Webhook error: {str(e)}")
