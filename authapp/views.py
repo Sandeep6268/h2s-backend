@@ -139,38 +139,82 @@ class UserCoursesView(APIView):
     
 
 # views.py
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse, JsonResponse
+from django.conf import settings
+import json
+import logging
+from .models import Course
 from .razorpay_utils import razorpay_client
+
+logger = logging.getLogger(__name__)
 
 @csrf_exempt
 def razorpay_webhook(request):
-    if request.method == 'POST':
-        payload = request.body
-        received_sig = request.headers.get('X-Razorpay-Signature')
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+    
+    try:
+        payload = request.body.decode('utf-8')
+        received_sig = request.headers.get('X-Razorpay-Signature', '')
         
-        # Verify webhook signature
-        try:
-            razorpay_client.utility.verify_webhook_signature(
-                payload, 
-                received_sig, 
-                settings.RAZORPAY_WEBHOOK_SECRET
-            )
-            data = json.loads(payload)
+        # 1. Verify webhook signature using Razorpay's built-in method
+        razorpay_client.utility.verify_webhook_signature(
+            payload,
+            received_sig,
+            settings.RAZORPAY_WEBHOOK_SECRET
+        )
+        
+        data = json.loads(payload)
+        event_type = data.get('event')
+        
+        # 2. Process only payment success events
+        if event_type == 'payment.captured':
+            payment_data = data['payload']['payment']['entity']
             
-            # Process only payment.success events
-            if data['event'] == 'payment.success':
-                payment_id = data['payload']['payment']['entity']['id']
-                user_id = data['payload']['payment']['entity']['notes']['user_id']
-                course_url = data['payload']['payment']['entity']['notes']['course_url']
+            # 3. Validate required fields
+            required_fields = ['id', 'notes']
+            if not all(field in payment_data for field in required_fields):
+                logger.error("Missing required payment fields")
+                return HttpResponse(status=400)
                 
-                # Save to database
+            if not all(k in payment_data['notes'] for k in ['user_id', 'course_url']):
+                logger.error("Missing required note fields")
+                return HttpResponse(status=400)
+            
+            # 4. Save to database
+            try:
                 Course.objects.get_or_create(
-                    user_id=user_id,
-                    course_url=course_url
+                    user_id=payment_data['notes']['user_id'],
+                    course_url=payment_data['notes']['course_url'],
+                    defaults={
+                        'purchased_at': payment_data.get('created_at')
+                    }
                 )
+                logger.info(f"Course registered for user {payment_data['notes']['user_id']}")
+                return HttpResponse(status=200)
                 
-            return HttpResponse(status=200)
-        except:
-            return HttpResponse(status=400)
+            except IntegrityError:
+                logger.warning("Duplicate course purchase detected")
+                return HttpResponse(status=200)  # Still return 200 to prevent retries
+                
+            except Exception as e:
+                logger.error(f"Database error: {str(e)}")
+                return HttpResponse(status=500)
+                
+        return HttpResponse(status=200)
+        
+    except razorpay.errors.SignatureVerificationError:
+        logger.warning("Invalid webhook signature")
+        return HttpResponse(status=400)
+        
+    except json.JSONDecodeError:
+        logger.error("Invalid JSON payload")
+        return HttpResponse(status=400)
+        
+    except Exception as e:
+        logger.critical(f"Webhook processing failed: {str(e)}")
+        return HttpResponse(status=500)
 
 class SubmitCertificateRequest(APIView):
     def post(self, request):
