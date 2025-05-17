@@ -37,3 +37,14 @@ class CustomUserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email']  # Add any other fields you need
 
 
+from .models import UserCourseAccess,PaymentRecord
+
+class UserCourseAccessSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserCourseAccess
+        fields = ['course_path', 'access_granted_at', 'last_accessed']
+
+class PaymentRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentRecord
+        fields = '__all__'

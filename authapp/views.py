@@ -266,3 +266,63 @@ class VerifyPaymentView(APIView):
             
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+
+
+
+from .models import UserCourseAccess
+from .serializers import UserCourseAccessSerializer
+
+class CourseAccessView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            course_path = request.data.get('course_path')
+            
+            # Validate course path format
+            if not course_path or not course_path.startswith('/'):
+                return Response(
+                    {"error": "Invalid course path"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Check if access already exists
+            if UserCourseAccess.objects.filter(
+                user=request.user, 
+                course_path=course_path
+            ).exists():
+                return Response(
+                    {"message": "Access already granted"},
+                    status=status.HTTP_200_OK
+                )
+            
+            # Create new access record
+            UserCourseAccess.objects.create(
+                user=request.user,
+                course_path=course_path
+            )
+            
+            return Response(
+                {"message": "Course access granted"},
+                status=status.HTTP_201_CREATED
+            )
+            
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def get(self, request):
+        try:
+            accesses = UserCourseAccess.objects.filter(user=request.user)
+            serializer = UserCourseAccessSerializer(accesses, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
