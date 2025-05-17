@@ -103,7 +103,8 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()  # Load .env
-
+RAZORPAY_KEY_ID = 'rzp_live_Hs9twWPT8yzKjH'  # your live key
+RAZORPAY_KEY_SECRET = 'your_live_secret_key_here'  # never commit this to git!
 
 
 ROOT_URLCONF = 'backend.urls'

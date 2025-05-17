@@ -68,22 +68,69 @@ from .serializers import UserWithCoursesSerializer,CourseSerializer
 import json
 
 
+# class PurchaseCourseView(APIView):
+#     permission_classes = [IsAuthenticated]
+    
+#     def post(self, request):
+#         course_url = request.data.get('course_url')
+        
+#         if not course_url:
+#             return Response({"error": "Course URL is required"}, status=400)
+            
+#         # Save to database
+#         Course.objects.create(
+#             user=request.user,
+#             course_url=course_url
+#         )
+        
+#         return Response({"message": "Course purchased successfully!"})
+
+
+from .razorpay_utils import verify_payment_signature
+from django.db import transaction
+
 class PurchaseCourseView(APIView):
     permission_classes = [IsAuthenticated]
     
+    @transaction.atomic
     def post(self, request):
-        course_url = request.data.get('course_url')
-        
-        if not course_url:
-            return Response({"error": "Course URL is required"}, status=400)
+        try:
+            data = request.data
+            course_url = data.get('course_url')
             
-        # Save to database
-        Course.objects.create(
-            user=request.user,
-            course_url=course_url
-        )
-        
-        return Response({"message": "Course purchased successfully!"})
+            if not course_url:
+                return Response({"error": "Course URL is required"}, status=400)
+            
+            # Verify payment first
+            params_dict = {
+                'razorpay_order_id': data['razorpay_order_id'],
+                'razorpay_payment_id': data['razorpay_payment_id'],
+                'razorpay_signature': data['razorpay_signature']
+            }
+            
+            verify_payment_signature(params_dict)
+            
+            # Create or update course purchase
+            course, created = Course.objects.update_or_create(
+                user=request.user,
+                razorpay_order_id=data['razorpay_order_id'],
+                defaults={
+                    'course_url': course_url,
+                    'razorpay_payment_id': data['razorpay_payment_id'],
+                    'razorpay_signature': data['razorpay_signature'],
+                    'amount': float(data['amount'])/100,  # convert from paise to INR
+                    'payment_status': 'SUCCESS',
+                    'status': 'ACTIVE'
+                }
+            )
+            
+            return Response({
+                "message": "Course purchased successfully!",
+                "course_id": course.id
+            })
+            
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
 
 class UserCoursesView(APIView):
     permission_classes = [IsAuthenticated]
@@ -112,3 +159,73 @@ class GetUserById(APIView):
         user = get_object_or_404(CustomUser, id=user_id)
         serializer = CustomUserSerializer(user)
         return Response(serializer.data)
+    
+from django.conf import settings
+from .razorpay_utils import create_razorpay_order,verify_payment_signature,client
+import json
+
+class CreateRazorpayOrderView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            amount = float(request.data.get('amount'))
+            order = create_razorpay_order(amount)
+            
+            # Save order details temporarily
+            Course.objects.create(
+                user=request.user,
+                razorpay_order_id=order['id'],
+                amount=amount,
+                payment_status='CREATED'
+            )
+            
+            return Response(order)
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
+
+class VerifyPaymentView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            data = request.data
+            course_url = data.get('course_url')
+            
+            # Verify payment signature
+            params_dict = {
+                'razorpay_order_id': data['razorpay_order_id'],
+                'razorpay_payment_id': data['razorpay_payment_id'],
+                'razorpay_signature': data['razorpay_signature']
+            }
+            
+            client.utility.verify_payment_signature(params_dict)
+            
+            # Update course purchase
+            course, created = Course.objects.get_or_create(
+                user=request.user,
+                razorpay_order_id=data['razorpay_order_id'],
+                defaults={
+                    'course_url': course_url,
+                    'razorpay_payment_id': data['razorpay_payment_id'],
+                    'razorpay_signature': data['razorpay_signature'],
+                    'payment_status': 'SUCCESS',
+                    'amount': float(data['amount'])/100  # convert paise to INR
+                }
+            )
+            
+            if not created:
+                course.payment_status = 'SUCCESS'
+                course.razorpay_payment_id = data['razorpay_payment_id']
+                course.save()
+            
+            return Response({'status': 'Payment verified successfully'})
+            
+        except Exception as e:
+            # Log failed payment
+            if 'razorpay_order_id' in data:
+                Course.objects.filter(
+                    razorpay_order_id=data['razorpay_order_id']
+                ).update(payment_status='FAILED')
+            
+            return Response({'error': str(e)}, status=400)
