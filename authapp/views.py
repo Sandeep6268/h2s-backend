@@ -38,6 +38,17 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
 from urllib.parse import quote
+
+class ContactFormAPI(APIView):  # Renamed from SubmitContactForm
+    def post(self, request):
+        serializer = ContactSubmissionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"message": "Thank you for your submission!"}, 
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 class SubmitContactForm(APIView):
     permission_classes = [AllowAny]  # Explicitly allow anyone to access
     

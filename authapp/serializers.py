@@ -19,6 +19,11 @@ class ContactSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactSubmission
         fields = '__all__'
+
+class ContactFormSerializer(serializers.ModelSerializer):  # Renamed from ContactSubmissionSerializer
+    class Meta:
+        model = ContactSubmission
+        fields = '__all__'  # Kept original field names (first_name, last_name, etc.)
 class UserWithCoursesSerializer(serializers.ModelSerializer):
     courses = CourseSerializer(many=True, read_only=True)
     
