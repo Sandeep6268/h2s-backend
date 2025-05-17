@@ -203,33 +203,64 @@ class CreateOrderView(APIView):
 
     def post(self, request):
         try:
-            amount = int(float(request.data.get('amount'))) * 100  # Razorpay expects amount in paise
-            course_url = request.data.get('course_url')
+            # Get and validate amount
+            amount_str = request.data.get('amount')
+            if not amount_str:
+                return Response(
+                    {'error': 'Amount is required'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             
-            if not amount or not course_url:
-                return Response({'error': 'Amount and course URL are required'}, status=status.HTTP_400_BAD_REQUEST)
-
+            try:
+                amount = int(float(amount_str) * 100)  # Convert to paise
+                if amount <= 0:
+                    raise ValueError
+            except (ValueError, TypeError):
+                return Response(
+                    {'error': 'Invalid amount. Must be a positive number'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Get and validate course_url
+            course_url = request.data.get('course_url')
+            if not course_url:
+                return Response(
+                    {'error': 'Course URL is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Create Razorpay order
             data = {
                 'amount': amount,
                 'currency': 'INR',
                 'receipt': f"receipt_{request.user.id}_{int(time.time())}",
-                'payment_capture': '1'  # Auto-capture payment
+                'payment_capture': '1'  # Auto-capture
             }
             
             order = client.order.create(data=data)
             
-            # Save the order to database
+            # Save to database
             Payment.objects.create(
                 user=request.user,
                 razorpay_order_id=order['id'],
-                amount=amount/100,  # Store in INR, not paise
-                course_url=course_url
+                amount=amount/100,  # Store in INR
+                course_url=course_url,
+                status='created'
             )
             
-            return Response(order)
+            return Response({
+                'id': order['id'],
+                'amount': order['amount'],
+                'currency': order['currency'],
+                'status': 'created'
+            })
             
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            print(f"Order creation error: {str(e)}")
+            return Response(
+                {'error': f'Order creation failed: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 @method_decorator(csrf_exempt, name='dispatch')
 class PaymentWebhookView(APIView):
