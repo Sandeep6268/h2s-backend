@@ -6,41 +6,26 @@ from django.utils import timezone
 # authapp/models.py
 
 # models.py
-class Course(models.Model):
-    COURSE_CHOICES = [
-        ('/htmlcss89', 'HTML + CSS'),
-        ('/htmlcssjs62', 'HTML + CSS + JS'),
-        ('/python24', 'Python'),
-        ('/pythondjango90', 'Python + Django'),
-        ('/react79', 'React'),
-        ('/reactandjs43', 'React + JavaScript'),
-    ]
+# class Course(models.Model):
+#     COURSE_CHOICES = [
+#         ('/htmlcss89', 'HTML + CSS'),
+#         ('/htmlcssjs62', 'HTML + CSS + JS'),
+#         ('/python24', 'Python'),
+#         ('/pythondjango90', 'Python + Django'),
+#         ('/react79', 'React'),
+#         ('/reactandjs43', 'React + JavaScript'),
+#     ]
     
-    PAYMENT_STATUS = [
-        ('PENDING', 'Pending'),
-        ('SUCCESS', 'Success'),
-        ('FAILED', 'Failed'),
-        ('REFUNDED', 'Refunded'),
-    ]
     
-    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
-    course_url = models.CharField(max_length=50, choices=COURSE_CHOICES)
-    razorpay_order_id = models.CharField(max_length=100, unique=True)
-    razorpay_payment_id = models.CharField(max_length=100, null=True, blank=True)
-    razorpay_signature = models.CharField(max_length=100, null=True, blank=True)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    purchased_at = models.DateTimeField(default=timezone.now)
-    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS, default='PENDING')
-    last_updated = models.DateTimeField(auto_now=True)
+    
+#     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
+#     course_url = models.CharField(max_length=50, choices=COURSE_CHOICES)
+#     purchased_at = models.DateTimeField(default=timezone.now)
 
-    class Meta:
-        indexes = [
-            models.Index(fields=['razorpay_order_id']),
-            models.Index(fields=['user']),
-        ]
+   
 
-    def __str__(self):
-        return f"{self.user.email} - {self.get_course_url_display()} ({self.payment_status})"
+#     def __str__(self):
+#         return f"{self.user.email} - {self.get_course_url_display()} "
 
 class ContactSubmission(models.Model):
     first_name = models.CharField(max_length=100)
@@ -83,3 +68,21 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.email
 
+from django.db import models
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+class Payment(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    razorpay_order_id = models.CharField(max_length=255)
+    razorpay_payment_id = models.CharField(max_length=255, null=True, blank=True)
+    razorpay_signature = models.CharField(max_length=255, null=True, blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=3, default='INR')
+    status = models.CharField(max_length=20, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    course_url = models.CharField(max_length=50)  # Store which course was purchased
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.amount} {self.currency}"
