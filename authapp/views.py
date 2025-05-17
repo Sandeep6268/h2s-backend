@@ -191,21 +191,28 @@ class CreateRazorpayOrderView(APIView):
     
     def post(self, request):
         try:
-            if not request.user.is_authenticated:
-                return Response(
-                    {'error': 'Authentication required'},
-                    status=status.HTTP_401_UNAUTHORIZED
-                )
-                
-            amount = float(request.data.get('amount'))
+            # Validate required data
+            amount = request.data.get('amount')
             course_url = request.data.get('course_url')
             
-            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-            order = client.order.create({
-                "amount": int(amount * 100),
-                "currency": "INR",
-                "payment_capture": 1
-            })
+            if not amount or not course_url:
+                return Response(
+                    {'error': 'Both amount and course_url are required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            try:
+                amount = float(amount)
+                if amount <= 0:
+                    raise ValueError("Amount must be positive")
+            except (ValueError, TypeError):
+                return Response(
+                    {'error': 'Invalid amount provided'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Create Razorpay order
+            order = create_razorpay_order(amount)
             
             # Create course record
             Course.objects.create(
