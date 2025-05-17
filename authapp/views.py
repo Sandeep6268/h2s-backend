@@ -96,7 +96,6 @@ from django.http import HttpResponse
 #         serializer = CourseSerializer(courses, many=True)
 #         return Response(serializer.data)
 
-
 class PurchaseCourseView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -104,15 +103,31 @@ class PurchaseCourseView(APIView):
         course_url = request.data.get('course_url')
         
         if not course_url:
-            return Response({"error": "Course URL is required"}, status=400)
-            
-        # Save to database
-        Course.objects.create(
-            user=request.user,
-            course_url=course_url
-        )
+            return Response({"error": "Course URL is required"}, status=status.HTTP_400_BAD_REQUEST)
         
-        return Response({"message": "Course purchased successfully!"})
+        # Validate course URL
+        valid_courses = dict(Course.COURSE_CHOICES).keys()
+        if course_url not in valid_courses:
+            return Response({"error": "Invalid course URL"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Check if user already has this course
+        if Course.objects.filter(user=request.user, course_url=course_url).exists():
+            return Response({"error": "You already have access to this course"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            # Save to database
+            course = Course.objects.create(
+                user=request.user,
+                course_url=course_url
+            )
+            
+            return Response({
+                "message": "Course purchased successfully!",
+                "course_id": course.id
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class UserCoursesView(APIView):
     permission_classes = [IsAuthenticated]
