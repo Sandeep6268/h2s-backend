@@ -103,12 +103,7 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()  # Load .env
-# Add these to your settings.py
-CASHFREE_APP_ID = '97234949fe40abef14e420b3ac943279'
-CASHFREE_SECRET_KEY = 'cfsk_ma_prod_5dc29bb460e4a9a3ecfb2a1d04485c2a_57264cd5'
-CASHFREE_ENVIRONMENT = 'PROD'  # Use 'TEST' for sandbox
-FRONTEND_URL = 'https://h2stechsolutions.netlify.app'
-BACKEND_URL = 'https://h2s-backend-urrt.onrender.com'
+
 
 
 ROOT_URLCONF = 'backend.urls'

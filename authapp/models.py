@@ -66,22 +66,3 @@ class CustomUser(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 
-
-class Order(models.Model):
-    STATUS_CHOICES = [
-        ('PENDING', 'Pending'),
-        ('SUCCESS', 'Success'),
-        ('FAILED', 'Failed'),
-    ]
-    
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    order_id = models.CharField(max_length=100, unique=True)
-    cashfree_order_id = models.CharField(max_length=100, blank=True)
-    course_url = models.CharField(max_length=200)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.order_id} ({self.status})"
