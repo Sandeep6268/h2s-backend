@@ -20,7 +20,7 @@ from .serializers import CertificateRequestSerializer
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated,AllowAny
 from .models import CustomUser
 # from .serializers import UserWithCoursesSerializer,CourseSerializer
 import json
@@ -39,11 +39,15 @@ from rest_framework import status
 from django.conf import settings
 from urllib.parse import quote
 class SubmitContactForm(APIView):
+    permission_classes = [AllowAny]  # Explicitly allow anyone to access
+    
     def post(self, request):
+        print("Received data:", request.data)  # Add this line
         serializer = ContactSubmissionSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({'message': 'Thank you for your submission!'}, status=status.HTTP_201_CREATED)
+        print("Validation errors:", serializer.errors)  # Add this line
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 # class PurchaseCourseView(APIView):
 #     permission_classes = [IsAuthenticated]

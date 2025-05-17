@@ -34,7 +34,7 @@ class ContactSubmission(models.Model):
     email = models.EmailField()
     phone = models.CharField(max_length=20)
     message = models.TextField()
-    submitted_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} - {self.email}"
