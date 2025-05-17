@@ -183,8 +183,8 @@ class GetUserById(APIView):
 # authapp/views.py
 # authapp/views.py
 
-
 import razorpay
+import time
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -192,8 +192,6 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from .serializers import PaymentSerializer
-from .models import Payment
 import json
 
 client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
@@ -221,14 +219,6 @@ class CreateOrderView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Get and validate course_url
-            course_url = request.data.get('course_url')
-            if not course_url:
-                return Response(
-                    {'error': 'Course URL is required'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
             # Create Razorpay order
             data = {
                 'amount': amount,
@@ -238,15 +228,6 @@ class CreateOrderView(APIView):
             }
             
             order = client.order.create(data=data)
-            
-            # Save to database
-            Payment.objects.create(
-                user=request.user,
-                razorpay_order_id=order['id'],
-                amount=amount/100,  # Store in INR
-                course_url=course_url,
-                status='created'
-            )
             
             return Response({
                 'id': order['id'],
@@ -275,16 +256,9 @@ class PaymentWebhookView(APIView):
             data = json.loads(payload)
             
             if data['event'] == 'payment.captured':
-                payment_id = data['payload']['payment']['entity']['id']
-                order_id = data['payload']['payment']['entity']['order_id']
-                
-                # Update payment in database
-                payment = Payment.objects.get(razorpay_order_id=order_id)
-                payment.razorpay_payment_id = payment_id
-                payment.status = 'completed'
-                payment.save()
-                
-                # Here you can add any additional logic like sending emails, etc.
+                # Here you can add any post-payment logic like sending emails, etc.
+                # But no database storage
+                pass
                 
             return Response({'status': 'success'})
             
@@ -303,18 +277,11 @@ class VerifyPaymentView(APIView):
                 'razorpay_signature': request.data.get('signature')
             }
             
+            # Verify payment signature with Razorpay
             client.utility.verify_payment_signature(data)
             
-            # Update payment status
-            payment = Payment.objects.get(
-                razorpay_order_id=data['razorpay_order_id'],
-                user=request.user
-            )
-            payment.razorpay_payment_id = data['razorpay_payment_id']
-            payment.razorpay_signature = data['razorpay_signature']
-            payment.status = 'completed'
-            payment.save()
-            
+            # If verification succeeds, return success
+            # No database storage involved
             return Response({'status': 'Payment verified successfully'})
             
         except Exception as e:

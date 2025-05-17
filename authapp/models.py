@@ -68,21 +68,3 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.email
 
-from django.db import models
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
-
-class Payment(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    razorpay_order_id = models.CharField(max_length=255)
-    razorpay_payment_id = models.CharField(max_length=255, null=True, blank=True)
-    razorpay_signature = models.CharField(max_length=255, null=True, blank=True)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.CharField(max_length=3, default='INR')
-    status = models.CharField(max_length=20, default='pending')
-    created_at = models.DateTimeField(auto_now_add=True)
-    course_url = models.CharField(max_length=50)  # Store which course was purchased
-    
-    def __str__(self):
-        return f"{self.user.email} - {self.amount} {self.currency}"
