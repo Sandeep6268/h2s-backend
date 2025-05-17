@@ -6,21 +6,24 @@ from django.utils import timezone
 # authapp/models.py
 
 # models.py
-# class Course(models.Model):
-#     COURSE_CHOICES = [
-#         ('/htmlcss89', 'HTML + CSS'),
-#         ('/htmlcssjs62', 'HTML + CSS + JS'),
-#         ('/python24', 'Python'),
-#         ('/pythondjango90', 'Python + Django'),
-#         ('/react79', 'React'),
-#         ('/reactandjs43', 'React + JavaScript'),
-#     ]
+class Course(models.Model):
+    COURSE_CHOICES = [
+        ('/htmlcss89', 'HTML + CSS'),
+        ('/htmlcssjs62', 'HTML + CSS + JS'),
+        ('/python24', 'Python'),
+        ('/pythondjango90', 'Python + Django'),
+        ('/react79', 'React'),
+        ('/reactandjs43', 'React + JavaScript'),
+    ]
     
     
     
-#     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
-#     course_url = models.CharField(max_length=50, choices=COURSE_CHOICES)
-#     purchased_at = models.DateTimeField(default=timezone.now)
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
+    course_url = models.CharField(max_length=50, choices=COURSE_CHOICES)
+    purchased_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f'{self.user} - {self.course_url}'
 
    
 

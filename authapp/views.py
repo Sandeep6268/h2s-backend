@@ -27,7 +27,7 @@ import json
 
 
 
-from .models import ContactSubmission
+from .models import ContactSubmission,Course
 from .serializers import ContactSubmissionSerializer
 # from cashfree_pg.models import OrderRequest
 # authapp/views.py
@@ -45,28 +45,28 @@ class SubmitContactForm(APIView):
             serializer.save()
             return Response({'message': 'Thank you for your submission!'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-# class PurchaseCourseView(APIView):
-#     permission_classes = [IsAuthenticated]
+class PurchaseCourseView(APIView):
+    permission_classes = [IsAuthenticated]
     
-#     def post(self, request):
-#         course_url = request.data.get('course_url')
+    def post(self, request):
+        course_url = request.data.get('course_url')
         
-#         if not course_url:
-#             return Response({"error": "Course URL is required"}, status=400)
+        if not course_url:
+            return Response({"error": "Course URL is required"}, status=400)
             
-#         # Save to database
-#         Course.objects.create(
-#             user=request.user,
-#             course_url=course_url
-#         )
+        # Save to database
+        Course.objects.create(
+            user=request.user,
+            course_url=course_url
+        )
         
-#         return Response({"message": "Course purchased successfully!"})
+        return Response({"message": "Course purchased successfully!"})
 
 # views.py
 # views.py
 from rest_framework.permissions import IsAuthenticated
 from .models import CustomUser
-# from .serializers import UserWithCoursesSerializer,CourseSerializer
+from .serializers import UserWithCoursesSerializer,CourseSerializer
 import json
 
 from django.http import HttpResponse
@@ -132,13 +132,13 @@ from django.db import transaction
 #         except Exception as e:
 #             return Response({"error": str(e)}, status=400)
 
-# class UserCoursesView(APIView):
-#     permission_classes = [IsAuthenticated]
+class UserCoursesView(APIView):
+    permission_classes = [IsAuthenticated]
 
-#     def get(self, request):
-#         courses = Course.objects.filter(user=request.user)
-#         serializer = CourseSerializer(courses, many=True)
-#         return Response(serializer.data)
+    def get(self, request):
+        courses = Course.objects.filter(user=request.user)
+        serializer = CourseSerializer(courses, many=True)
+        return Response(serializer.data)
 
 # authapp/views.py
 # class UserCoursesView(APIView):
