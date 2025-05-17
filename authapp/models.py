@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 
 
 # authapp/models.py
@@ -15,21 +16,31 @@ class Course(models.Model):
         ('/reactandjs43', 'React + JavaScript'),
     ]
     
+    PAYMENT_STATUS = [
+        ('PENDING', 'Pending'),
+        ('SUCCESS', 'Success'),
+        ('FAILED', 'Failed'),
+        ('REFUNDED', 'Refunded'),
+    ]
+    
     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
     course_url = models.CharField(max_length=50, choices=COURSE_CHOICES)
-    razorpay_order_id = models.CharField(max_length=100)
-    razorpay_payment_id = models.CharField(max_length=100)
-    razorpay_signature = models.CharField(max_length=100)
+    razorpay_order_id = models.CharField(max_length=100, unique=True)
+    razorpay_payment_id = models.CharField(max_length=100, null=True, blank=True)
+    razorpay_signature = models.CharField(max_length=100, null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    purchased_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, default='ACTIVE')
-    payment_status = models.CharField(max_length=20, default='PENDING')  # PENDING, SUCCESS, FAILED
+    purchased_at = models.DateTimeField(default=timezone.now)
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS, default='PENDING')
+    last_updated = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('user', 'course_url')  # Prevent duplicate purchases
+        indexes = [
+            models.Index(fields=['razorpay_order_id']),
+            models.Index(fields=['user']),
+        ]
 
     def __str__(self):
-        return f"{self.user.username} - {self.course_url}"
+        return f"{self.user.email} - {self.get_course_url_display()} ({self.payment_status})"
 
 class ContactSubmission(models.Model):
     first_name = models.CharField(max_length=100)
@@ -65,7 +76,10 @@ class CertificateRequest(models.Model):
 class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=15, null=True, blank=True)
-
+    
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
+
+    def __str__(self):
+        return self.email
 

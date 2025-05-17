@@ -186,31 +186,39 @@ import json
 
 # authapp/views.py
 # authapp/views.py
+import json
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from django.db import transaction
+from .models import Course
+from .razorpay_utils import create_razorpay_order, client
+from django.conf import settings
+
 class CreateRazorpayOrderView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
+    @transaction.atomic
     def post(self, request):
         try:
-            # Validate required data
-            amount = request.data.get('amount')
+            amount = float(request.data.get('amount'))
             course_url = request.data.get('course_url')
             
-            if not amount or not course_url:
+            if not amount or amount <= 0:
                 return Response(
-                    {'error': 'Both amount and course_url are required'},
+                    {'error': 'Valid amount is required'}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            try:
-                amount = float(amount)
-                if amount <= 0:
-                    raise ValueError("Amount must be positive")
-            except (ValueError, TypeError):
+            if not course_url:
                 return Response(
-                    {'error': 'Invalid amount provided'},
+                    {'error': 'Course URL is required'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             # Create Razorpay order
             order = create_razorpay_order(amount)
             
@@ -233,38 +241,30 @@ class CreateRazorpayOrderView(APIView):
 
 class VerifyPaymentView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
+    @transaction.atomic
     def post(self, request):
         try:
             data = request.data
-            course_url = data.get('course_url')
-            
-            # Verify payment signature
             params_dict = {
                 'razorpay_order_id': data['razorpay_order_id'],
                 'razorpay_payment_id': data['razorpay_payment_id'],
                 'razorpay_signature': data['razorpay_signature']
             }
             
+            # Verify payment signature
             client.utility.verify_payment_signature(params_dict)
             
-            # Update course purchase
-            course, created = Course.objects.get_or_create(
-                user=request.user,
+            # Update course record
+            course = Course.objects.get(
                 razorpay_order_id=data['razorpay_order_id'],
-                defaults={
-                    'course_url': course_url,
-                    'razorpay_payment_id': data['razorpay_payment_id'],
-                    'razorpay_signature': data['razorpay_signature'],
-                    'payment_status': 'SUCCESS',
-                    'amount': float(data['amount'])/100  # convert paise to INR
-                }
+                user=request.user
             )
             
-            if not created:
-                course.payment_status = 'SUCCESS'
-                course.razorpay_payment_id = data['razorpay_payment_id']
-                course.save()
+            course.razorpay_payment_id = data['razorpay_payment_id']
+            course.razorpay_signature = data['razorpay_signature']
+            course.payment_status = 'SUCCESS'
+            course.save()
             
             return Response({'status': 'Payment verified successfully'})
             
@@ -275,22 +275,44 @@ class VerifyPaymentView(APIView):
                     razorpay_order_id=data['razorpay_order_id']
                 ).update(payment_status='FAILED')
             
-            return Response({'error': str(e)}, status=400)
-        
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 @csrf_exempt
 def razorpay_webhook(request):
     if request.method == 'POST':
-        payload = request.body
-        sig_header = request.META['HTTP_X_RAZORPAY_SIGNATURE']
-        
         try:
+            payload = request.body.decode('utf-8')
+            sig_header = request.META['HTTP_X_RAZORPAY_SIGNATURE']
+            
+            # Verify webhook signature
             client.utility.verify_webhook_signature(
                 payload, 
                 sig_header, 
                 settings.RAZORPAY_WEBHOOK_SECRET
             )
-            # Process webhook
-        except:
-            return HttpResponse(status=400)
             
-    return HttpResponse(status=200)
+            data = json.loads(payload)
+            event = data.get('event')
+            
+            if event == 'payment.captured':
+                payment = data.get('payload', {}).get('payment', {}).get('entity', {})
+                order_id = payment.get('order_id')
+                
+                if order_id:
+                    Course.objects.filter(
+                        razorpay_order_id=order_id
+                    ).update(
+                        razorpay_payment_id=payment.get('id'),
+                        payment_status='SUCCESS'
+                    )
+            
+            return HttpResponse(status=200)
+            
+        except Exception as e:
+            print(f"Webhook error: {str(e)}")
+            return HttpResponse(status=400)
+    
+    return HttpResponse(status=405)
