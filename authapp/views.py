@@ -136,6 +136,41 @@ class UserCoursesView(APIView):
         courses = Course.objects.filter(user=request.user)
         serializer = CourseSerializer(courses, many=True)
         return Response(serializer.data)
+    
+
+# views.py
+from .razorpay_utils import razorpay_client
+
+@csrf_exempt
+def razorpay_webhook(request):
+    if request.method == 'POST':
+        payload = request.body
+        received_sig = request.headers.get('X-Razorpay-Signature')
+        
+        # Verify webhook signature
+        try:
+            razorpay_client.utility.verify_webhook_signature(
+                payload, 
+                received_sig, 
+                settings.RAZORPAY_WEBHOOK_SECRET
+            )
+            data = json.loads(payload)
+            
+            # Process only payment.success events
+            if data['event'] == 'payment.success':
+                payment_id = data['payload']['payment']['entity']['id']
+                user_id = data['payload']['payment']['entity']['notes']['user_id']
+                course_url = data['payload']['payment']['entity']['notes']['course_url']
+                
+                # Save to database
+                Course.objects.get_or_create(
+                    user_id=user_id,
+                    course_url=course_url
+                )
+                
+            return HttpResponse(status=200)
+        except:
+            return HttpResponse(status=400)
 
 class SubmitCertificateRequest(APIView):
     def post(self, request):
