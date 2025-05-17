@@ -326,3 +326,28 @@ class CourseAccessView(APIView):
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+        
+
+
+class UserCoursesViewPurchased(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            courses = UserCourseAccess.objects.filter(
+                user=request.user
+            ).order_by('-access_granted_at')
+            
+            # Format to match what your frontend expects
+            data = [{
+                'course_path': course.course_path,
+                'access_granted_at': course.access_granted_at
+            } for course in courses]
+            
+            return Response(data)
+            
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import GetUserById, SubmitCertificateRequest,SubmitContactForm,CreateOrderView,VerifyPaymentView,PaymentWebhookView,PurchaseCourseView,UserCoursesView,CourseAccessView
+from .views import GetUserById, SubmitCertificateRequest,SubmitContactForm,CreateOrderView,VerifyPaymentView,PaymentWebhookView,PurchaseCourseView,UserCoursesView,CourseAccessView,UserCoursesViewPurchased
 
 urlpatterns = [
     path('user/<int:user_id>/', GetUserById.as_view(), name='get-user'),
@@ -11,5 +11,6 @@ urlpatterns = [
     path('verify-payment/', VerifyPaymentView.as_view(), name='verify-payment'),
     path('webhook/', PaymentWebhookView.as_view(), name='payment-webhook'),
     path('course-access/', CourseAccessView.as_view(), name='course-access'),
+    path('user-courses/', UserCoursesViewPurchased.as_view(), name='user-courses'),
 
 ]
