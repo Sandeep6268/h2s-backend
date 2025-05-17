@@ -62,7 +62,28 @@ class SubmitContactForm(APIView):
 
 # views.py
 # views.py
+from rest_framework.permissions import IsAuthenticated
+from .models import CustomUser, Course
+from .serializers import UserWithCoursesSerializer,CourseSerializer
+import json
 
+
+class PurchaseCourseView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        course_url = request.data.get('course_url')
+        
+        if not course_url:
+            return Response({"error": "Course URL is required"}, status=400)
+            
+        # Save to database
+        Course.objects.create(
+            user=request.user,
+            course_url=course_url
+        )
+        
+        return Response({"message": "Course purchased successfully!"})
 
 class UserCoursesView(APIView):
     permission_classes = [IsAuthenticated]
@@ -91,42 +112,3 @@ class GetUserById(APIView):
         user = get_object_or_404(CustomUser, id=user_id)
         serializer = CustomUserSerializer(user)
         return Response(serializer.data)
-    
-
-
-class PurchaseCourseView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        try:
-            order_id = request.data.get('order_id')
-            payment_id = request.data.get('payment_id')
-            course_url = request.data.get('course_url')
-            user = request.user
-
-            # Check if already enrolled
-            if Course.objects.filter(order_id=order_id).exists():
-                return Response(
-                    {"status": "SUCCESS", "message": "Already enrolled"},
-                    status=status.HTTP_200_OK
-                )
-
-            # Create new enrollment
-            Course.objects.create(
-                user=user,
-                course_url=course_url,
-                order_id=order_id,
-                payment_id=payment_id,
-                status='ACTIVE'
-            )
-
-            return Response({
-                "status": "SUCCESS",
-                "message": "Course enrolled successfully"
-            })
-
-        except Exception as e:
-            return Response(
-                {"status": "ERROR", "message": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
