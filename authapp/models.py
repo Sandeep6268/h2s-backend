@@ -17,26 +17,13 @@ class Course(models.Model):
     
     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
     course_url = models.CharField(max_length=50, choices=COURSE_CHOICES)
-    # razorpay_order_id = models.CharField(max_length=100)
-    # razorpay_payment_id = models.CharField(max_length=100)
-    # razorpay_signature = models.CharField(max_length=100)
-    # purchased_at = models.DateTimeField(auto_now_add=True)
-    # status = models.CharField(max_length=20, default='ACTIVE')
-    # payment_status = models.CharField(max_length=20, default='PENDING')  # PENDING, SUCCESS, FAILED
-    # amount = models.DecimalField(
-    #     max_digits=10, 
-    #     decimal_places=2, 
-    #     default=0.00  # Add default value
-    # )
-    # payment_status = models.CharField(
-    #     max_length=20, 
-    #     default='PENDING',  # Add default value
-    #     choices=[
-    #         ('PENDING', 'Pending'),
-    #         ('SUCCESS', 'Success'),
-    #         ('FAILED', 'Failed')
-    #     ]
-    # )
+    razorpay_order_id = models.CharField(max_length=100)
+    razorpay_payment_id = models.CharField(max_length=100)
+    razorpay_signature = models.CharField(max_length=100)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    purchased_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, default='ACTIVE')
+    payment_status = models.CharField(max_length=20, default='PENDING')  # PENDING, SUCCESS, FAILED
 
     class Meta:
         unique_together = ('user', 'course_url')  # Prevent duplicate purchases
