@@ -9,7 +9,8 @@ from django.shortcuts import get_object_or_404
 
 
 
-
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 from rest_framework import status
 from .models import CertificateRequest
@@ -68,7 +69,7 @@ from .models import CustomUser, Course
 from .serializers import UserWithCoursesSerializer,CourseSerializer
 import json
 
-
+from django.http import HttpResponse
 # class PurchaseCourseView(APIView):
 #     permission_classes = [IsAuthenticated]
     
