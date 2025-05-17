@@ -81,6 +81,8 @@ class UserCourseAccess(models.Model):
     class Meta:
         verbose_name_plural = "User Course Access"
         unique_together = ('user', 'course_path')
+    def __str__(self):
+        return f'{self.user.username} - {self.course_path}'
 
 class PaymentRecord(models.Model):
     """Stores payment verification data"""
