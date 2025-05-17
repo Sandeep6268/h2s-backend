@@ -88,50 +88,6 @@ from django.http import HttpResponse
 #         return Response({"message": "Course purchased successfully!"})
 
 
-from django.db import transaction
-
-# class PurchaseCourseView(APIView):
-#     permission_classes = [IsAuthenticated]
-    
-#     @transaction.atomic
-#     def post(self, request):
-#         try:
-#             data = request.data
-#             course_url = data.get('course_url')
-            
-#             if not course_url:
-#                 return Response({"error": "Course URL is required"}, status=400)
-            
-#             # Verify payment first
-#             params_dict = {
-#                 'razorpay_payment_id': data['razorpay_payment_id'],
-#                 'razorpay_signature': data['razorpay_signature']
-#             }
-            
-#             verify_payment_signature(params_dict)
-            
-#             # Create or update course purchase
-#             course, created = Course.objects.update_or_create(
-#                 user=request.user,
-#                 # razorpay_order_id=data['razorpay_order_id'],
-#                 defaults={
-#                     'course_url': course_url,
-#                     'razorpay_payment_id': data['razorpay_payment_id'],
-#                     'razorpay_signature': data['razorpay_signature'],
-#                     'amount': float(data['amount'])/100,  # convert from paise to INR
-#                     'payment_status': 'SUCCESS',
-#                     'status': 'ACTIVE'
-#                 }
-#             )
-            
-#             return Response({
-#                 "message": "Course purchased successfully!",
-#                 "course_id": course.id
-#             })
-            
-#         except Exception as e:
-#             return Response({"error": str(e)}, status=400)
-
 class UserCoursesView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -140,23 +96,6 @@ class UserCoursesView(APIView):
         serializer = CourseSerializer(courses, many=True)
         return Response(serializer.data)
 
-# authapp/views.py
-# class UserCoursesView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         try:
-#             courses = Course.objects.filter(
-#                 user=request.user,
-#                 payment_status='SUCCESS'  # Only show successfully paid courses
-#             ).select_related('user')
-#             serializer = CourseSerializer(courses, many=True)
-#             return Response(serializer.data)
-#         except Exception as e:
-#             return Response(
-#                 {'error': str(e)},
-#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
-#             )
 
 
 
