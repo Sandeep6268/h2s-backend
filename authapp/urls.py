@@ -7,7 +7,7 @@ urlpatterns = [
     path('purchase-course/', PurchaseCourseView.as_view(), name='purchase-course'),
     path('my-courses/', UserCoursesView.as_view(), name='user-courses'),
     path('contact/', SubmitContactForm.as_view(), name='contact-submission'),
-    path('create-order/', CreateRazorpayOrderView.as_view(), name='create-order'),
+    path('create-razorpay-order/', CreateRazorpayOrderView.as_view(), name='create-order'),
     path('verify-payment/', VerifyPaymentView.as_view(), name='verify-payment'),
     path('razorpay-webhook/', razorpay_webhook),
 
