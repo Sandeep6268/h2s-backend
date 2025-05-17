@@ -201,28 +201,32 @@ from django.conf import settings
 class CreateRazorpayOrderView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @transaction.atomic
     def post(self, request):
         try:
-            amount = float(request.data.get('amount'))
+            # Input validation
+            amount = request.data.get('amount')
             course_url = request.data.get('course_url')
             
-            if not amount or amount <= 0:
+            if not all([amount, course_url]):
                 return Response(
-                    {'error': 'Valid amount is required'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            if not course_url:
-                return Response(
-                    {'error': 'Course URL is required'},
+                    {"error": "Both amount and course_url are required"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Create Razorpay order
+            try:
+                amount = float(amount)
+                if amount <= 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                return Response(
+                    {"error": "Amount must be a positive number"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Create order
             order = create_razorpay_order(amount)
             
-            # Create course record
+            # Save to database
             Course.objects.create(
                 user=request.user,
                 course_url=course_url,
@@ -235,8 +239,8 @@ class CreateRazorpayOrderView(APIView):
             
         except Exception as e:
             return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 class VerifyPaymentView(APIView):
