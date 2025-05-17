@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404
 
 
 
+
 from rest_framework import status
 from .models import CertificateRequest
 from .serializers import CertificateRequestSerializer
@@ -229,3 +230,21 @@ class VerifyPaymentView(APIView):
                 ).update(payment_status='FAILED')
             
             return Response({'error': str(e)}, status=400)
+        
+@csrf_exempt
+def razorpay_webhook(request):
+    if request.method == 'POST':
+        payload = request.body
+        sig_header = request.META['HTTP_X_RAZORPAY_SIGNATURE']
+        
+        try:
+            client.utility.verify_webhook_signature(
+                payload, 
+                sig_header, 
+                settings.RAZORPAY_WEBHOOK_SECRET
+            )
+            # Process webhook
+        except:
+            return HttpResponse(status=400)
+            
+    return HttpResponse(status=200)
