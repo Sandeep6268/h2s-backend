@@ -146,6 +146,8 @@ import json
 import logging
 from .models import Course
 from .razorpay_utils import razorpay_client
+from django.db import IntegrityError
+
 
 logger = logging.getLogger(__name__)
 
