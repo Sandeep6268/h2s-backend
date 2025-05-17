@@ -7,7 +7,7 @@ from .models import CustomUser
 from .serializers import CustomUserSerializer
 from django.shortcuts import get_object_or_404
 
-
+import razorpay
 
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -134,13 +134,31 @@ class PurchaseCourseView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=400)
 
+# class UserCoursesView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         courses = Course.objects.filter(user=request.user)
+#         serializer = CourseSerializer(courses, many=True)
+#         return Response(serializer.data)
+
+# authapp/views.py
 class UserCoursesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        courses = Course.objects.filter(user=request.user)
-        serializer = CourseSerializer(courses, many=True)
-        return Response(serializer.data)
+        try:
+            courses = Course.objects.filter(
+                user=request.user,
+                payment_status='SUCCESS'  # Only show successfully paid courses
+            ).select_related('user')
+            serializer = CourseSerializer(courses, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 
@@ -166,25 +184,45 @@ from django.conf import settings
 from .razorpay_utils import create_razorpay_order,verify_payment_signature,client
 import json
 
+# authapp/views.py
+# authapp/views.py
 class CreateRazorpayOrderView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
         try:
+            if not request.user.is_authenticated:
+                return Response(
+                    {'error': 'Authentication required'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+                
             amount = float(request.data.get('amount'))
-            order = create_razorpay_order(amount)
+            course_url = request.data.get('course_url')
             
-            # Save order details temporarily
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+            order = client.order.create({
+                "amount": int(amount * 100),
+                "currency": "INR",
+                "payment_capture": 1
+            })
+            
+            # Create course record
             Course.objects.create(
                 user=request.user,
+                course_url=course_url,
                 razorpay_order_id=order['id'],
                 amount=amount,
-                payment_status='CREATED'
+                payment_status='PENDING'
             )
             
             return Response(order)
+            
         except Exception as e:
-            return Response({'error': str(e)}, status=400)
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class VerifyPaymentView(APIView):
     permission_classes = [IsAuthenticated]
