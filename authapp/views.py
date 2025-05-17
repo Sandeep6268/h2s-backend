@@ -45,45 +45,6 @@ class SubmitContactForm(APIView):
             serializer.save()
             return Response({'message': 'Thank you for your submission!'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-from django.db import transaction
-class PurchaseCourseView(APIView):
-    permission_classes = [IsAuthenticated]
-    @transaction.atomic
-
-    def post(self, request):
-        try:
-            course_url = request.data.get('course_url')
-            
-            if not course_url:
-                return Response({"error": "Course URL is required"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Check if the course URL is valid
-            valid_courses = [choice[0] for choice in Course.COURSE_CHOICES]
-            if course_url not in valid_courses:
-                return Response({"error": "Invalid course URL"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Check if user already has this course
-            if Course.objects.filter(user=request.user, course_url=course_url).exists():
-                return Response({"error": "You already have access to this course"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Save to database
-            course = Course.objects.create(
-                user=request.user,
-                course_url=course_url
-            )
-            
-            return Response({
-                "message": "Course purchased successfully!",
-                "course_url": course.course_url,
-                "purchased_at": course.purchased_at
-            }, status=status.HTTP_201_CREATED)
-            
-        except Exception as e:
-            print(f"Error purchasing course: {str(e)}")
-            return Response(
-                {"error": "An error occurred while processing your request"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
 # class PurchaseCourseView(APIView):
 #     permission_classes = [IsAuthenticated]
     
@@ -127,6 +88,32 @@ from django.http import HttpResponse
 #         return Response({"message": "Course purchased successfully!"})
 
 
+# class UserCoursesView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         courses = Course.objects.filter(user=request.user)
+#         serializer = CourseSerializer(courses, many=True)
+#         return Response(serializer.data)
+
+
+class PurchaseCourseView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        course_url = request.data.get('course_url')
+        
+        if not course_url:
+            return Response({"error": "Course URL is required"}, status=400)
+            
+        # Save to database
+        Course.objects.create(
+            user=request.user,
+            course_url=course_url
+        )
+        
+        return Response({"message": "Course purchased successfully!"})
+
 class UserCoursesView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -134,9 +121,6 @@ class UserCoursesView(APIView):
         courses = Course.objects.filter(user=request.user)
         serializer = CourseSerializer(courses, many=True)
         return Response(serializer.data)
-
-
-
 
 class SubmitCertificateRequest(APIView):
     def post(self, request):

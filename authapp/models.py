@@ -16,14 +16,12 @@ class Course(models.Model):
         ('/reactandjs43', 'React + JavaScript'),
     ]
     
-    
-    
     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
     course_url = models.CharField(max_length=50, choices=COURSE_CHOICES)
-    purchased_at = models.DateTimeField(default=timezone.now)
+    purchased_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.user} - {self.course_url}'
+        return f"{self.user.username} - {self.course_url}"
 
    
 
