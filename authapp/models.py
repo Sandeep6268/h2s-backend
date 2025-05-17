@@ -74,7 +74,7 @@ class CustomUser(AbstractUser):
 class UserCourseAccess(models.Model):
     """Tracks course access without duplicating purchase records"""
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    course_path = models.CharField(max_length=100, unique=True)  # e.g. "/python24"
+    course_path = models.CharField(max_length=100)  # e.g. "/python24"
     access_granted_at = models.DateTimeField(auto_now_add=True)
     last_accessed = models.DateTimeField(auto_now=True)
     
