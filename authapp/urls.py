@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import GetUserById, SubmitCertificateRequest,SubmitContactForm,CreateOrderView,VerifyPaymentView,PaymentWebhookView,PurchaseCourseView,UserCoursesView,CourseAccessView,UserCoursesViewPurchased,ContactFormAPI
+from .views import GetUserById, SubmitCertificateRequest,SubmitContactForm,CreateOrderView,VerifyPaymentView,PaymentWebhookView,PurchaseCourseView,UserCoursesView,CourseAccessView,UserCoursesViewPurchased,ContactFormAPI,SendWelcomeEmailView
 
 urlpatterns = [
     path('user/<int:user_id>/', GetUserById.as_view(), name='get-user'),
@@ -13,5 +13,6 @@ urlpatterns = [
     path('course-access/', CourseAccessView.as_view(), name='course-access'),
     path('user-courses/', UserCoursesViewPurchased.as_view(), name='user-courses'),
     path('contact-us/', ContactFormAPI.as_view(), name='contact-form'),
+    path('send-welcome-email/', SendWelcomeEmailView.as_view(), name='send-welcome-email'),
 
 ]
