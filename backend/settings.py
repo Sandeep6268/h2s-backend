@@ -119,6 +119,8 @@ DEFAULT_FROM_EMAIL = 'h2stechsolutions@gmail.com'
 
 ROOT_URLCONF = 'backend.urls'
 
+AUTH_PASSWORD_VALIDATORS = []
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
