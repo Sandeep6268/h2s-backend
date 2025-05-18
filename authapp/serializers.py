@@ -39,7 +39,7 @@ class CertificateRequestSerializer(serializers.ModelSerializer):
 class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email']  # Add any other fields you need
+        fields = ['id', 'username', 'email','phone']  # Add any other fields you need
 
 
 from .models import UserCourseAccess,PaymentRecord
