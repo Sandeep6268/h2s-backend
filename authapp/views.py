@@ -285,47 +285,7 @@ class VerifyPaymentView(APIView):
 
 
 
-# authapp/views.py
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.core.mail import send_mail
-from django.conf import settings
-from .models import CustomUser
 
-class SendWelcomeEmailView(APIView):
-    permission_classes = []  # Allow any to access (or use proper permissions)
-    
-    def post(self, request):
-        try:
-            email = request.data.get('email')
-            username = request.data.get('username')
-            
-            if not email or not username:
-                return Response(
-                    {"error": "Email and username are required"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Send email
-            send_mail(
-                'Welcome to Our Website!',
-                f'Hi {username},\n\nYou have successfully registered on our website.\n\nThank you!',
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
-                fail_silently=False,
-            )
-            
-            return Response(
-                {"message": "Welcome email sent successfully"},
-                status=status.HTTP_200_OK
-            )
-            
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
 
 from .models import UserCourseAccess
 from .serializers import UserCourseAccessSerializer

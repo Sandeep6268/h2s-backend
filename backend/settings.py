@@ -106,20 +106,9 @@ load_dotenv()  # Load .env
 RAZORPAY_KEY_ID = 'rzp_live_Hs9twWPT8yzKjH'  # your live key
 RAZORPAY_KEY_SECRET = 'HyXGUjvM94AR8uleEO26atwt'  # never commit this to git!
 RAZORPAY_WEBHOOK_SECRET = 'https://h2s-backend-urrt.onrender.com/api/razorpay/webhook/'
-
-
-# settings.py
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'h2stechsolutions@gmail.com'  # Your official email
-EMAIL_HOST_PASSWORD = 'H2s@2025'  # Use App Password if 2FA enabled
-DEFAULT_FROM_EMAIL = 'h2stechsolutions@gmail.com'
+AUTH_PASSWORD_VALIDATORS = []
 
 ROOT_URLCONF = 'backend.urls'
-
-AUTH_PASSWORD_VALIDATORS = []
 
 TEMPLATES = [
     {
