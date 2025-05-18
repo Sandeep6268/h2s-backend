@@ -114,7 +114,7 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'h2stechsolutions@gmail.com'  # Your official email
-EMAIL_HOST_PASSWORD = 'Mp09bc1724_@'  # Use App Password if 2FA enabled
+EMAIL_HOST_PASSWORD = 'H2s@2025'  # Use App Password if 2FA enabled
 DEFAULT_FROM_EMAIL = 'h2stechsolutions@gmail.com'
 
 ROOT_URLCONF = 'backend.urls'
