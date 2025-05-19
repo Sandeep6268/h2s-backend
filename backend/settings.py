@@ -105,7 +105,7 @@ import os
 load_dotenv()  # Load .env
 RAZORPAY_KEY_ID = 'rzp_live_Hs9twWPT8yzKjH'  # your live key
 RAZORPAY_KEY_SECRET = 'HyXGUjvM94AR8uleEO26atwt'  # never commit this to git!
-RAZORPAY_WEBHOOK_SECRET = 'https://h2s-backend-urrt.onrender.com/api/razorpay/webhook/'
+RAZORPAY_WEBHOOK_SECRET = 'https://h2s-backend-urrt.onrender.com/api/razorpay/webhookss/'
 AUTH_PASSWORD_VALIDATORS = []
 
 ROOT_URLCONF = 'backend.urls'
