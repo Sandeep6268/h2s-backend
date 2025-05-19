@@ -84,12 +84,12 @@ class UserCourseAccess(models.Model):
     def __str__(self):
         return f'{self.user.username} - {self.course_path}'
 
-# class PaymentRecord(models.Model):
-#     """Stores payment verification data"""
-#     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-#     razorpay_order_id = models.CharField(max_length=255, unique=True)
-#     razorpay_payment_id = models.CharField(max_length=255, unique=True)
-#     amount = models.DecimalField(max_digits=10, decimal_places=2)
-#     course_path = models.CharField(max_length=100)
-#     verified = models.BooleanField(default=False)
-#     created_at = models.DateTimeField(auto_now_add=True)
+class PaymentRecord(models.Model):
+    """Stores payment verification data"""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    razorpay_order_id = models.CharField(max_length=255, unique=True)
+    razorpay_payment_id = models.CharField(max_length=255, unique=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    course_path = models.CharField(max_length=100)
+    verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
