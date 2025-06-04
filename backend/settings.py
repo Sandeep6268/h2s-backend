@@ -136,7 +136,7 @@ import dj_database_url
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgresql://h2s_db_user:sYF9RaEwgzQvgn5dp9L4GFDKExs3WfIy@dpg-d0fgiva4d50c73esa8r0-a.oregon-postgres.render.com/h2s_db',
+        default='postgresql://h2s_db_882i_user:A4fHkyTosXsWjd2kxFDUeY9e2quVq5jF@dpg-d104cl15pdvs7394ee5g-a.oregon-postgres.render.com/h2s_db_882i',
         conn_max_age=600,
         ssl_require=True  # Required for Render PostgreSQL
     )
