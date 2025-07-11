@@ -136,9 +136,9 @@ import dj_database_url
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgresql://h2s_db_882i_user:A4fHkyTosXsWjd2kxFDUeY9e2quVq5jF@dpg-d104cl15pdvs7394ee5g-a.oregon-postgres.render.com/h2s_db_882i',
+        default='postgresql://neondb_owner:npg_ziy6LUTb3gkK@ep-polished-waterfall-afodks51-pooler.c-2.us-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
         conn_max_age=600,
-        ssl_require=True  # Required for Render PostgreSQL
+        ssl_require=True
     )
 }
 
